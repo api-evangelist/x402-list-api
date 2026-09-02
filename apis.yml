@@ -1,0 +1,58 @@
+name: x402 List API
+description: >-
+  An open, machine-readable, live-monitored directory of services that accept x402 protocol payments (HTTP 402 Payment
+  Required). Self-described as agent-first, it exposes service listings, uptime metrics, pricing, facilitator settlement
+  data, and rankings as JSON for autonomous agents, aggregators, and integrations.
+url: https://raw.githubusercontent.com/api-evangelist/x402-list-api/refs/heads/main/apis.yml
+created: '2026-09-02'
+modified: '2026-09-02'
+specificationVersion: '0.21'
+tags:
+  - x402
+  - crypto
+  - '402'
+  - agentic-payments
+  - API directory
+  - registry
+  - AI agents
+  - blockchain
+  - developer tools
+  - uptime monitoring
+apis:
+  - name: x402 List API
+    description: >-
+      Public REST API (OpenAPI 3.1) providing access to the x402 services directory, uptime, pricing, facilitator
+      volumes, networks, stats, rankings, and change events. Free reads (rate-limited), with x402 pay-per-request
+      metering for bulk usage.
+    humanURL: https://x402-list.com/api
+    baseURL: https://x402-list.com/api/v1
+    tags:
+      - x402
+      - crypto
+      - '402'
+      - agentic-payments
+      - API directory
+      - registry
+      - AI agents
+      - blockchain
+      - developer tools
+      - uptime monitoring
+    properties:
+      - type: OpenAPI
+        url: https://x402-list.com/api/v1/openapi.json
+      - type: Documentation
+        url: https://x402-list.com/api
+      - type: LLMsTxt
+        url: https://x402-list.com/llms.txt
+      - type: LLMsTxt
+        url: https://x402-list.com/llms-full.txt
+      - type: MCPServer
+        url: https://mcp.x402-list.com/mcp
+maintainers:
+  - FN: x402 List
+    url: mailto:info@x402-list.com
+generated:
+  by: apis.io/add
+  model: claude-opus-4-8
+  confidence: 97
+  at: '2026-09-02T09:37:38.394Z'
