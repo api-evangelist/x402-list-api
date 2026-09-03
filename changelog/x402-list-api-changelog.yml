@@ -1,0 +1,66 @@
+generated: '2026-09-02'
+method: probed
+source: >-
+  https://x402-list.com/changes.xml (HTTP 200, application/rss+xml, 50 items,
+  lastBuildDate 2026-09-03T00:19:39 GMT), declared as
+  {"type": "ChangeLog"} in the provider's own
+  https://x402-list.com/.well-known/apis.json. Cross-read against
+  https://x402-list.com/api and https://x402-list.com/llms.txt.
+description: >-
+  READ THIS BEFORE TRUSTING THE POINTER. x402 List declares changes.xml as its
+  ChangeLog, and it is a real, live, dated, machine-readable feed — but it
+  records changes to the DATA (payout-address rotations, price moves and payment
+  schema drift observed on listed third-party services' x402 wire), not changes
+  to this API. There is no API release note, no version history and no
+  "what's new" page anywhere on the site. Both facts are recorded here so the
+  artifact cannot be misread as a versioned API changelog.
+api_changelog:
+  published: false
+  url: null
+  scheme: null
+  current_version: v1 (path) / 1.0.0 (OpenAPI info.version)
+  entries: []
+  note: >-
+    The nearest thing to an API release note is prose on the reference page
+    disclosing the verified/payment_ready parameter split and the
+    ranking_version generations — see lifecycle/x402-list-api-lifecycle.yml.
+data_change_feed:
+  url: https://x402-list.com/changes.xml
+  human_url: https://x402-list.com/changes
+  api_url: https://x402-list.com/api/v1/changes
+  format: RSS 2.0 with an atom:link self reference
+  status: 200
+  title: x402 List - Service Changes
+  description: >-
+    Payment-term drift detected on the x402 402 wire: payout address, price, and
+    schema changes across listed services.
+  items_in_feed: 50
+  last_build_date: '2026-09-03T00:19:39Z'
+  update_frequency: continuous — items observed minutes apart during the probe
+  volume_disclosed: >-
+    7,191 change events over the trailing 90 days, of which 1,074 payTo
+    (settlement address) rotations, 724 price moves and 5,393 payment-schema
+    changes (source: https://x402-list.com/llms.txt).
+  event_types: [payTo rotation, price change, schema change]
+  filterable_by: [service, type, time window]
+  rest_operation: listServiceChanges (GET /api/v1/changes)
+  mcp_tool: x402_change_events
+  recent_entries_sample:
+    - title: 'NetIntel: Schema changed'
+      date: '2026-09-03T00:15:25Z'
+    - title: 'NetIntel: Price changed'
+      date: '2026-09-03T00:15:25Z'
+    - title: 'Exa: Schema changed'
+      date: '2026-09-03T00:10:01Z'
+    - title: 'DripStack: Schema changed'
+      date: '2026-09-03T00:04:09Z'
+    - title: 'Apify Agentic Endpoint (AGI): Schema changed'
+      date: '2026-09-03T00:04:03Z'
+    - title: 'nsgoods Sanctions Screening Oracle: Schema changed'
+      date: '2026-09-03T00:04:03Z'
+  why_it_matters: >-
+    The provider's stated case for the feed is that diffing the whole x402
+    payment envelope rather than the price alone catches a payTo rotation at an
+    unchanged price — a change invisible to anyone tracking prices only — so an
+    agent can check whether the address it is about to pay still belongs to the
+    service it means to pay.

@@ -1,0 +1,129 @@
+generated: '2026-09-02'
+method: derived
+source: >-
+  Derived by binding the seven tools returned by a live tools/list against
+  https://mcp.x402-list.com/mcp (2026-09-02, anonymous, HTTP 200) to the 23
+  operations in the provider's own OpenAPI 3.1 document at
+  https://x402-list.com/api/v1/openapi.json. Both surfaces are first-party and
+  both were fetched unauthenticated, so every binding below is checked against a
+  real inputSchema and a real operationId — none is inferred from prose.
+description: >-
+  x402 List's MCP server is a thin, honest wrapper over its public REST API: all
+  seven tools bind to published operations, and the tool parameter names are the
+  REST query parameter names almost verbatim (q, category, network, status,
+  signable, sort, page, per_page). The interesting asymmetry runs the other way —
+  the write half of the REST API (submission, owner-update, ownership
+  verification, the paid suggestion box) has no MCP tool at all, so an agent can
+  read and price the directory over MCP but cannot change it.
+surfaces:
+  openapi:
+    url: https://x402-list.com/api/v1/openapi.json
+    local: openapi/_original/x402-list-api-openapi.json
+    operations: 23
+    gated: false
+  mcp:
+    url: https://mcp.x402-list.com/mcp
+    transport: streamable-http
+    tools: 7
+    gated: false
+    note: >-
+      tools/list answered anonymously, so every inputSchema below is the server's
+      own, not a name-matched guess.
+  graphql:
+    present: false
+    note: /graphql and /api/v1/graphql both 404 — no GraphQL surface.
+crosswalk:
+  - tool: x402_search_services
+    category: discovery
+    rest: [listServices]
+    binding: one-to-one
+    confidence: high
+    note: >-
+      Tool parameters q/category/network/status/signable/sort/page/per_page are
+      the listServices query parameters by the same names. verified_only maps to
+      the REST `verified` boolean filter; `fields` is an MCP-side response
+      projection with no REST equivalent.
+  - tool: x402_get_service
+    category: detail
+    rest: [getService, getServiceUptime, getServicePriceHistory, getServiceScores, getServiceVolume, getServiceBuyers]
+    binding: composite
+    confidence: high
+    note: >-
+      slug maps to the getService path parameter. include_series is the
+      composition switch: with it set the tool folds in the per-slug series
+      endpoints (uptime, price, scores, volume, buyers) that are separate REST
+      operations.
+  - tool: x402_find_best_service
+    category: recommendation
+    rest: [getBestServices]
+    binding: one-to-one
+    confidence: high
+    note: >-
+      Exact parameter parity with GET /best
+      (q, category, network, max_price_usd, require_verified, prefer, limit,
+      include_facilitator_context). The provider's own llms.txt states this is
+      "the same relevance-then-quality ranking as the MCP x402_find_best_service
+      tool".
+  - tool: x402_check_health
+    category: monitoring
+    rest: [getServiceChecks, getServiceUptime, getStatus, getGlobalChecks]
+    binding: composite
+    confidence: medium
+    note: >-
+      With a slug it is the per-service check/uptime pair; with no slug the
+      server instructions say it answers system-wide, which is GET /status and
+      GET /checks. include_services selects the fan-out.
+  - tool: x402_facilitator_volumes
+    category: settlement
+    rest: [listFacilitators, getFacilitator]
+    binding: composite
+    confidence: high
+    note: >-
+      timeframe/days/page/per_page map to the list operation; include_chains and
+      include_timeseries pull the per-chain breakdown and daily series that GET
+      /facilitators/{id} carries.
+  - tool: x402_change_events
+    category: monitoring
+    rest: [listServiceChanges]
+    binding: one-to-one
+    confidence: high
+    note: service/type/days/page/per_page are the GET /changes query parameters.
+  - tool: x402_assess_services
+    category: analysis
+    rest: [postAssess]
+    binding: one-to-one
+    confidence: high
+    note: >-
+      POST /assess. Both charge $0.25 USDC on Base over x402. The tool takes
+      payment_signature_b64 as an argument where the REST operation takes the
+      PAYMENT-SIGNATURE request header — the server holds no wallet keys, so the
+      caller signs.
+mcp_only: []
+rest_only:
+  - operation: submitService
+    reason: >-
+      POST /submit — write. No MCP tool exposes directory submission; agents can
+      read the directory over MCP but cannot add to it.
+  - operation: requestServiceUpdate
+    reason: POST /services/{slug}/request-update — owner-only metadata change flow, no tool.
+  - operation: reissueOwnershipToken
+    reason: POST /services/{slug}/reissue-token — owner-only, no tool.
+  - operation: verifyServiceOwnership
+    reason: POST /services/{slug}/verify-ownership — owner-only, no tool.
+  - operation: postSuggestion
+    reason: POST /suggestions — paid write ($0.10 on Base), no tool.
+  - operation: getNetworks
+    reason: GET /networks — reference lookup, folded into tool enums rather than exposed.
+  - operation: getCategories
+    reason: GET /categories — reference lookup, folded into tool enums rather than exposed.
+  - operation: getStats
+    reason: GET /stats — directory-wide aggregates, no tool.
+coverage:
+  tools_total: 7
+  tools_bound: 7
+  tools_unbound: 0
+  rest_operations_total: 23
+  rest_operations_covered: 14
+  rest_operations_uncovered: 9
+  write_operations_total: 5
+  write_operations_with_tool: 1

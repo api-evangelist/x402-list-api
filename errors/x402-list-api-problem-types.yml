@@ -1,0 +1,104 @@
+generated: '2026-09-02'
+method: derived
+source: >-
+  Derived from the 4xx/5xx responses of every operation in
+  https://x402-list.com/api/v1/openapi.json (23 operations), enriched from the
+  error prose and worked 402 examples at https://x402-list.com/api.
+description: >-
+  x402 List does NOT use RFC 9457 problem+json. It returns a plain
+  application/json envelope, {"error": {"code": <int>, "message": <string>}},
+  with the HTTP status repeated in error.code. The one rich error shape in the
+  API is the 402: it is not an error envelope at all but an x402 v2
+  PaymentRequired object, carried both in the body and base64-encoded in a
+  PAYMENT-REQUIRED response header, and it is retryable by paying rather than by
+  fixing the request.
+format: custom-json
+rfc9457: false
+media_type: application/json
+envelope:
+  shape: '{"error": {"code": <integer>, "message": <string>}}'
+  schema: components.schemas.Error
+  note: >-
+    error.code repeats the HTTP status rather than carrying a distinct
+    application error code. The 402 branch is the exception and carries a
+    machine-readable app-level `error` string (e.g. resubmission_fee_required).
+problem_types:
+  - status: 400
+    name: Bad Request
+    occurs_on: [listServices, getServicePriceHistory, getServiceScores, getServiceVolume, getServiceBuyers, listServiceChanges, getBestServices, submitService, requestServiceUpdate, reissueOwnershipToken, verifyServiceOwnership, postSuggestion, postAssess]
+    meaning: >-
+      An enum-valued query parameter was outside its closed set (network, status,
+      category, sort, verified, payment_ready, source, signable all return 400 on
+      an unrecognised value rather than silently ignoring it), or a write body
+      failed validation.
+    remediation: >-
+      Read the closed sets from GET /networks and GET /categories rather than
+      guessing. Full network names ("base", "solana") are not accepted — use the
+      abbreviations (BSE, SOL, POL, ARB, BSP, AVX).
+    retryable: false
+  - status: 402
+    name: Payment Required
+    occurs_on: [listServices, getService, getServiceUptime, getServicePriceHistory, getServiceScores, getServiceVolume, getServiceBuyers, getServiceChecks, listFacilitators, getFacilitator, getGlobalChecks, getStatus, listServiceChanges, getNetworks, getStats, getCategories, getBestServices, submitService, postSuggestion, postAssess]
+    meaning: >-
+      Either the calling IP is past the free 2,000 GET/day quota (metered read,
+      $0.01), or the operation is inherently paid (assess $0.25, suggestions
+      $0.10), or a submission fee applies (free-compute host $1.00,
+      resubmission-within-14-days $0.50, both $1.50).
+    body_schema: components.schemas.PaymentRequired
+    headers: [PAYMENT-REQUIRED]
+    app_error_codes:
+      - resubmission_fee_required
+    remediation: >-
+      Read accepts[0] from the PaymentRequired body (or base64-decode the
+      PAYMENT-REQUIRED header, which carries the same object minus the
+      human-readable message), pay it with an x402-capable client, and retry the
+      identical request with a PAYMENT-SIGNATURE header. The successful retry
+      carries a PAYMENT-RESPONSE header.
+    retryable: true
+    retry_condition: after payment
+  - status: 404
+    name: Not Found
+    occurs_on: [getService, getServiceUptime, getServicePriceHistory, getServiceScores, getServiceVolume, getServiceBuyers, getServiceChecks, getFacilitator, requestServiceUpdate, reissueOwnershipToken, verifyServiceOwnership]
+    meaning: Unknown service slug or facilitator id.
+    remediation: Resolve slugs through GET /services (q= substring search) before addressing them directly.
+    retryable: false
+  - status: 409
+    name: Conflict
+    occurs_on: [requestServiceUpdate, verifyServiceOwnership]
+    meaning: >-
+      An update request already exists for this service in a state that blocks a
+      new one, or ownership verification was attempted against a request that is
+      not in a verifiable state.
+    retryable: false
+  - status: 410
+    name: Gone
+    occurs_on: [verifyServiceOwnership]
+    meaning: The one-time ownership token has expired — it is valid for 72 hours.
+    remediation: Call POST /services/{slug}/reissue-token to obtain a fresh token.
+    retryable: false
+  - status: 429
+    name: Too Many Requests
+    occurs_on: [all 23 operations]
+    meaning: >-
+      Over 200 requests/minute for this IP, or a per-operation cooldown was hit
+      (one update request per email+service every 7 days; a 7-day submission
+      cooldown per submitter email, tracked separately per submission type).
+    headers: [Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset]
+    remediation: >-
+      Honour Retry-After. Above 100 req/min the API sends an advisory
+      X-RateLimit-Throttled: true while still succeeding — treat that as the cue
+      to back off rather than waiting for the 429.
+    retryable: true
+  - status: 500
+    name: Internal Server Error
+    occurs_on: [all 23 operations]
+    meaning: Unhandled server error.
+    retryable: true
+  - status: 503
+    name: Service Unavailable
+    occurs_on: [postSuggestion, postAssess]
+    meaning: >-
+      The paid write path is temporarily unavailable — these are the two
+      operations that depend on downstream settlement and model inference, so
+      they carry a 503 the read operations do not.
+    retryable: true

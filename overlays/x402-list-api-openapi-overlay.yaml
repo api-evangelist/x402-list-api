@@ -1,0 +1,142 @@
+overlay: 1.0.0
+info:
+  title: API Evangelist enrichment overlay for the x402 List API
+  version: 1.0.0
+extends: ../openapi/_original/x402-list-api-openapi.json
+x-generated: '2026-09-02'
+x-method: generated
+x-source: >-
+  Generated from this enrichment pass. Every value below is either a fact
+  observed on a live probe of x402-list.com on 2026-09-02 or a pointer to an
+  artifact in this repository. The provider's own document is never mutated.
+x-scope: >-
+  Adds cross-cutting runtime semantics OpenAPI does not express — observed
+  rate-limit and metering headers, the x402 payment flow, the absence of
+  idempotency and of any reversal path, and links to the derived artifacts —
+  plus repository cross-links on the tag groups.
+actions:
+  - target: $.info
+    description: Link the enrichment artifacts and record the discovery surface.
+    update:
+      x-apis-io:
+        provider: x402-list-api
+        apis_json: https://x402-list.com/.well-known/apis.json
+        api_catalog: https://x402-list.com/.well-known/api-catalog
+        llms_txt: https://x402-list.com/llms.txt
+        mcp_endpoint: https://mcp.x402-list.com/mcp
+        governance_ruleset: https://x402-list.com/.well-known/x402-list.spectral.yaml
+        artifacts:
+          conventions: conventions/x402-list-api-conventions.yml
+          errors: errors/x402-list-api-problem-types.yml
+          rate_limits: rate-limits/x402-list-api-rate-limits.yml
+          plans: plans/x402-list-api-plans-pricing.yml
+          authentication: authentication/x402-list-api-authentication.yml
+          data_model: data-model/x402-list-api-data-model.yml
+          conformance: conformance/x402-list-api-conformance.yml
+          lifecycle: lifecycle/x402-list-api-lifecycle.yml
+          mcp: mcp/x402-list-api-mcp.yml
+          tool_crosswalk: mcp/x402-list-api-tool-crosswalk.yml
+          skills: skills/_index.yml
+  - target: $
+    description: >-
+      Declare the runtime semantics that hold across every operation, observed on
+      a live unauthenticated call rather than read from prose.
+    update:
+      x-runtime-semantics:
+        authentication: none
+        rate_limit:
+          limit: 200
+          window: minute
+          scope: ip
+          advisory_threshold: 100
+          headers: [X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-RateLimit-Throttled]
+          exhausted: 429 with Retry-After
+        metering:
+          free_quota: 2000
+          window: UTC day
+          scope: ip
+          applies_to: GET /api/v1/*
+          price_per_request_usd: 0.01
+          headers: [X-Meter-Remaining, X-Meter-Reset]
+          exhausted: 402 payable via x402 on Base
+        payment:
+          protocol: x402
+          version: 2
+          challenge_header: PAYMENT-REQUIRED
+          proof_header: PAYMENT-SIGNATURE
+          receipt_header: PAYMENT-RESPONSE
+          network: eip155:8453
+          asset: USDC
+        idempotency:
+          supported: false
+          note: No Idempotency-Key. Writes are guarded by cooldowns, not request-scoped keys.
+        dry_run:
+          supported: false
+        reversibility:
+          status: none
+          note: >-
+            No DELETE, cancel, withdraw, undo or rollback exists in this
+            contract. Unwanted submissions decay (7-day auto-reject) rather than
+            being cancelled, and ownership tokens lapse after 72 hours.
+        error_envelope:
+          rfc9457: false
+          shape: '{"error": {"code": <integer>, "message": <string>}}'
+        provenance_block:
+          present_on: every 2xx JSON response
+          license: CC-BY-4.0
+          header: 'Link: <https://creativecommons.org/licenses/by/4.0/>; rel="license"'
+  - target: $.paths[*][get,post]
+    description: Flag that every operation can answer 402 once the free daily quota is spent.
+    update:
+      x-metered: true
+  - target: $.paths['/submit'].post
+    description: Record that this write has no programmatic reversal.
+    update:
+      x-reversibility:
+        reversal_operation: null
+        window: null
+        decay: Pending submissions are auto-rejected after 7 days with an email notification.
+  - target: $.paths['/services/{slug}/request-update'].post
+    description: Record the ownership-proof flow and the absence of a withdrawal path.
+    update:
+      x-reversibility:
+        reversal_operation: null
+        window: null
+        decay: The one-time ownership token expires after 72 hours; an unverified request lapses.
+      x-ownership-proof:
+        mechanism: plain-text token published at {base_url origin}/.well-known/x402list.txt
+        ttl_hours: 72
+        verify_with: verifyServiceOwnership
+        reissue_with: reissueOwnershipToken
+  - target: $.paths['/assess'].post
+    description: Price and settlement terms for the paid analysis operation.
+    update:
+      x-price:
+        amount_usd: 0.25
+        network: eip155:8453
+        asset: USDC
+        refundable: false
+        note: Charges only for fresh reasoning; reading an already-computed assessment is free. An optional live probe target adds the third-party endpoint price and is non-refundable.
+  - target: $.paths['/suggestions'].post
+    description: Price for the paid suggestion box.
+    update:
+      x-price:
+        amount_usd: 0.10
+        network: eip155:8453
+        asset: USDC
+        refundable: false
+  - target: $.paths['/best'].get
+    description: Surface the ranking-generation compatibility contract.
+    update:
+      x-ranking-version:
+        current: 3
+        field: meta.ranking_version
+        note: Scores stored under an earlier generation are not comparable with these.
+  - target: $.tags[?(@.name=='Services')]
+    description: Cross-link the derived data model.
+    update:
+      x-data-model: data-model/x402-list-api-data-model.yml
+  - target: $.tags[?(@.name=='Facilitators')]
+    description: Cross-link the derived data model.
+    update:
+      x-data-model: data-model/x402-list-api-data-model.yml

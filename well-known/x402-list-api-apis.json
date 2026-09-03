@@ -1,0 +1,50 @@
+{
+  "aid": "x402-list.com",
+  "name": "x402 List",
+  "type": "Index",
+  "description": "Agent-first open directory of services using the x402 protocol (HTTP 402 Payment Required), with uptime, pricing, and on-chain settlement data exposed as machine-readable JSON.",
+  "tags": ["AI", "Blockchain", "Compute", "Content", "Data", "Finance", "Verification"],
+  "created": "2026-09-02",
+  "modified": "2026-09-02",
+  "url": "https://x402-list.com/.well-known/apis.json",
+  "specificationVersion": "0.23",
+  "common": [
+    { "type": "TermsOfService", "url": "https://x402-list.com/terms" },
+    { "type": "PrivacyPolicy", "url": "https://x402-list.com/privacy" },
+    { "type": "Security", "url": "https://x402-list.com/.well-known/security.txt" },
+    { "type": "Contact", "url": "https://x402-list.com/contact" },
+    { "type": "License", "name": "Data license: CC BY 4.0", "url": "https://creativecommons.org/licenses/by/4.0/" }
+  ],
+  "rules": [
+    {
+      "type": "SpectralRules",
+      "name": "x402 List OpenAPI governance ruleset",
+      "description": "Spectral ruleset (extends spectral:oas) enforcing contact, license, terms of service, described operations, and declared servers on the OpenAPI document.",
+      "mediaType": "application/yaml",
+      "url": "https://x402-list.com/.well-known/x402-list.spectral.yaml"
+    }
+  ],
+  "apis": [
+    {
+      "aid": "x402-list.com:x402-list-api",
+      "name": "x402 List API",
+      "description": "Public REST API for the x402-list.com directory: list and inspect services using the x402 protocol, with computed uptime, pricing history, on-chain settlement, and x402-compliance data. No authentication for reads; every JSON response carries a provenance block declaring the CC BY 4.0 data license.",
+      "humanURL": "https://x402-list.com/api",
+      "baseURL": "https://x402-list.com/api/v1",
+      "tags": ["AI", "Blockchain", "Compute", "Content", "Data", "Finance", "Verification"],
+      "properties": [
+        { "type": "Documentation", "url": "https://x402-list.com/api" },
+        { "type": "OpenAPI", "url": "https://x402-list.com/api/v1/openapi.json" },
+        { "type": "Pricing", "url": "https://x402-list.com/.well-known/api-onboarding" },
+        { "type": "RateLimits", "url": "https://x402-list.com/api" },
+        { "type": "ChangeLog", "url": "https://x402-list.com/changes.xml" }
+      ],
+      "contact": [
+        { "FN": "x402 List", "email": "info@x402-list.com", "url": "https://x402-list.com" }
+      ]
+    }
+  ],
+  "maintainers": [
+    { "FN": "Cosimo Miccolis", "email": "info@x402-list.com", "url": "https://x402-list.com", "org": "x402 List" }
+  ]
+}

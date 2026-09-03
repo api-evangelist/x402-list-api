@@ -1,0 +1,208 @@
+generated: '2026-09-02'
+method: derived
+source: >-
+  Derived from the provider's own contract at
+  https://x402-list.com/api/v1/openapi.json and the documents it serves under
+  /.well-known/ (security.txt, api-catalog, apis.json, api-onboarding, the
+  Spectral ruleset), each fetched directly on 2026-09-02 with the HTTP status
+  recorded in well-known/x402-list-api-well-known.yml. Every `conforms: true`
+  below points at an exact location in a document that was fetched, not at a
+  marketing claim.
+description: >-
+  x402 List's conformance profile is unusual: it declares almost nothing about
+  enterprise identity standards (no OAuth, no OIDC, no SCIM, no OData — because
+  it has no accounts at all) while conforming hard to the small set of standards
+  that matter for a machine-readable, agent-first, paid-per-call directory. The
+  domain standard for its market is the x402 protocol itself, and the contract
+  does not merely mention it: it specifies x402 v2 structurally, with the version
+  pinned by enum, the challenge and proof headers named, CAIP-2 network
+  identifiers, and the EIP-712 signing-domain parameters a standard x402 client
+  needs in order to sign.
+standards:
+  - id: openapi-3.1
+    name: OpenAPI 3.1.0
+    conforms: true
+    evidence:
+      location: openapi field of https://x402-list.com/api/v1/openapi.json
+      value: '3.1.0'
+      detail: >-
+        23 operations, all tagged and all carrying operationId and description;
+        one declared production server; info.contact, info.license and
+        info.termsOfService all present.
+  - id: rfc9116
+    name: RFC 9116 security.txt
+    conforms: true
+    evidence:
+      location: https://x402-list.com/.well-known/security.txt
+      status: 200
+      detail: >-
+        Contact, Expires (2027-09-03), Preferred-Languages, Canonical and Policy
+        fields all present and well formed.
+  - id: rfc9727
+    name: RFC 9727 API Catalog (/.well-known/api-catalog)
+    conforms: true
+    evidence:
+      location: https://x402-list.com/.well-known/api-catalog
+      status: 200
+      content_type: application/linkset+json; charset=utf-8
+      detail: >-
+        Served as an RFC 9264 linkset with anchor
+        https://x402-list.com/api/v1/ and service-desc, service-doc and status
+        link relations. This is a rare one — very few providers in the catalog
+        serve a real api-catalog rather than 404ing the path.
+  - id: rfc9264
+    name: RFC 9264 Linkset (application/linkset+json)
+    conforms: true
+    evidence:
+      location: https://x402-list.com/.well-known/api-catalog
+      detail: Correct media type and linkset[] / anchor structure.
+  - id: apis-json
+    name: APIs.json 0.23
+    conforms: true
+    evidence:
+      location: https://x402-list.com/.well-known/apis.json
+      status: 200
+      detail: >-
+        specificationVersion 0.23, aid x402-list.com, one apis[] entry with
+        humanURL/baseURL/properties, five common[] entries, a rules[]
+        SpectralRules entry, and a named maintainer.
+  - id: rfc8288
+    name: RFC 8288 Web Linking (license relation)
+    conforms: true
+    evidence:
+      location: observed response header on GET https://x402-list.com/api/v1/stats
+      value: 'Link: <https://creativecommons.org/licenses/by/4.0/>; rel="license"'
+  - id: spdx
+    name: SPDX license identifiers
+    conforms: true
+    evidence:
+      location: components.schemas.Provenance.license (enum ["CC-BY-4.0"]) and info.x-data-license
+      detail: >-
+        The data licence travels in-band as an SPDX identifier on every 2xx
+        response, alongside a ready-to-use attribution string and a cite_as URL.
+  - id: rfc9457
+    name: RFC 9457 Problem Details for HTTP APIs
+    conforms: false
+    evidence:
+      location: components.schemas.Error
+      detail: >-
+        Errors use a custom {"error":{"code","message"}} envelope in
+        application/json, not application/problem+json. See
+        errors/x402-list-api-problem-types.yml.
+  - id: pagination
+    name: Documented pagination
+    conforms: true
+    evidence:
+      location: components.schemas.PaginationMeta and the page/per_page parameters on listServices
+      detail: >-
+        Page-number pagination with meta.total, meta.page, meta.per_page and
+        meta.total_pages; per_page capped at 100; filters applied server-side so
+        meta.total counts the filtered set.
+  - id: idempotency
+    name: Request idempotency keys
+    conforms: false
+    evidence:
+      location: whole-document search of https://x402-list.com/api/v1/openapi.json
+      detail: >-
+        No Idempotency-Key header and no occurrence of "idempoten" anywhere in
+        the contract or the reference. Five write operations exist, guarded by
+        cooldowns rather than keys.
+  - id: rate-limit-headers
+    name: Rate-limit response headers
+    conforms: true
+    evidence:
+      location: observed on GET https://x402-list.com/api/v1/stats
+      detail: >-
+        X-RateLimit-Limit/Remaining/Reset/Throttled and X-Meter-Remaining/Reset
+        returned live and named in access-control-expose-headers; 429 carries
+        Retry-After. These are the X- prefixed forms, not the IETF draft
+        RateLimit-* fields.
+  - id: oauth2
+    name: OAuth 2.0
+    conforms: false
+    evidence:
+      location: /.well-known/oauth-authorization-server on both hosts
+      status: 404
+      detail: No OAuth anywhere — there are no accounts and no credentials to issue.
+  - id: oidc
+    name: OpenID Connect
+    conforms: false
+    evidence:
+      location: /.well-known/openid-configuration on both hosts
+      status: 404
+  - id: mcp
+    name: Model Context Protocol 2025-06-18 (Streamable HTTP)
+    conforms: true
+    evidence:
+      location: initialize response from https://mcp.x402-list.com/mcp
+      detail: >-
+        protocolVersion "2025-06-18", capabilities.tools.listChanged true,
+        serverInfo x402-list-mcp 0.5.1, session established via mcp-session-id,
+        tools/list answered anonymously with seven tools carrying full
+        inputSchema. Saved verbatim to mcp/x402-list-api-mcp-tools.json.
+domain_standards:
+  - id: x402
+    name: x402 protocol (HTTP 402 Payment Required, version 2)
+    market: agentic / machine-to-machine payments
+    conforms: true
+    role: both consumer and subject — x402 List is a directory OF x402 services that is itself paid over x402
+    evidence:
+      - location: components.schemas.PaymentRequired.x402Version
+        detail: 'Typed integer with enum [2] — the protocol version is pinned structurally, not described in prose.'
+      - location: components.schemas.PaymentRequired.accepts[] -> components.schemas.PaymentRequirements
+        detail: >-
+          Full x402 payment-option shape: scheme (enum ["exact"]), network,
+          asset, amount (atomic USDC as a string), payTo, maxTimeoutSeconds and
+          extra.
+      - location: response headers declared across the contract
+        detail: >-
+          PAYMENT-REQUIRED on every 402 (the same object base64-encoded),
+          PAYMENT-SIGNATURE on the paid retry, PAYMENT-RESPONSE on the paid 2xx.
+          12, 10 and several occurrences respectively in the document.
+      - location: components.schemas.PaymentRequirements.network
+        detail: >-
+          CAIP-2 chain identifiers (example "eip155:8453" for Base). "caip"
+          appears 26 times and "eip155" 20 times in the contract; list items also
+          carry a networks_caip2 array alongside the human abbreviations.
+      - location: components.schemas.PaymentRequirements.extra
+        detail: >-
+          EIP-712 signing-domain parameters (extra.name, extra.version) — the
+          fields a standard x402 client requires in order to sign a payment. The
+          provider runs a deterministic 14-check compliance list against listed
+          services, three checks of which test exactly this signability.
+    why_it_matters: >-
+      A buyer who already speaks x402 integrates with no bespoke connector: the
+      402 envelope, the CAIP-2 network id, the atomic USDC amount and the EIP-712
+      domain are all where a conformant client expects them. That is the whole
+      point of the directory, and the contract practises it on itself.
+  - id: caip-2
+    name: CAIP-2 blockchain namespace identifiers
+    market: blockchain interoperability
+    conforms: true
+    evidence:
+      location: components.schemas.PaymentRequirements.network and networks_caip2 on service list items
+      detail: 'Example "eip155:8453"; both the payment envelope and the directory records carry CAIP-2 ids beside the short abbreviations.'
+  - id: eip-712
+    name: EIP-712 typed structured data signing
+    market: EVM
+    conforms: true
+    evidence:
+      location: components.schemas.PaymentRequirements.extra
+      detail: extra.name and extra.version carry the signing domain; measured as a first-class compliance check across the directory.
+compliance_certifications:
+  published: false
+  note: >-
+    No SOC 2, ISO 27001, PCI, HIPAA or FedRAMP claim is made anywhere on the
+    site, and no trust center exists. That is consistent with a single-operator
+    directory that holds no customer data and issues no credentials — recorded as
+    an honest absence, and no Compliance pointer is emitted.
+governance:
+  ruleset: rules/x402-list-api-spectral.yaml
+  served_at: https://x402-list.com/.well-known/x402-list.spectral.yaml
+  declared_in: /.well-known/apis.json rules[] (type SpectralRules)
+  extends: spectral:oas
+  detail: >-
+    Five first-party rules on top of spectral:oas requiring contact, license and
+    termsOfService in info, at least one declared server, and a description on
+    every operation. The served copy is stated to be the single source of truth
+    and is used in the provider's own CI.

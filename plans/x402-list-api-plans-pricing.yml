@@ -1,0 +1,74 @@
+generated: '2026-09-02'
+method: probed
+source: >-
+  https://x402-list.com/.well-known/api-onboarding (HTTP 200,
+  application/json, "aod" 0.1 descriptor) — a machine-readable onboarding and
+  economics document the provider references from its own
+  /.well-known/apis.json. Corroborated by the human pricing/limits prose at
+  https://x402-list.com/api (HTTP 200) and by info.description in
+  https://x402-list.com/api/v1/openapi.json.
+description: >-
+  x402 List has no subscriptions, no accounts and no keys. Reads are free and
+  anonymous up to a daily quota; past that the SAME endpoints answer HTTP 402
+  and settle per request over the x402 protocol on Base. Two paid write
+  operations are priced per call rather than per plan, and one anti-spam fee
+  applies to submissions from free compute hosts. There is no enterprise tier
+  and no "contact sales" wall.
+pricing_url: https://x402-list.com/api
+machine_readable_pricing: https://x402-list.com/.well-known/api-onboarding
+currency: USD
+settlement: USDC on Base (EVM), per request, via the x402 protocol
+account_required: false
+agent_policy: allowed
+maturity: self-serve
+plan_count: 2
+plans:
+  - name: Free
+    price: 0
+    currency: USD
+    billing_period: none
+    included_quota: 2,000 GET requests per IP per UTC day on /api/v1/*
+    rate_limit: 200 requests/minute per IP (advisory soft throttle above 100)
+    overage: >-
+      Requests beyond the daily quota are not refused — they return HTTP 402 and
+      may be paid per request at the metered rate below.
+    authentication: none
+    url: https://x402-list.com/api
+  - name: Metered (x402)
+    price: 0.01
+    currency: USD
+    unit: per request
+    billing_period: per-request
+    included_quota: n/a — applies only past the free daily quota
+    settlement: x402 on Base (USDC)
+    signalling:
+      - X-Meter-Remaining — free requests left today for this IP
+      - X-Meter-Reset — Unix seconds at which the daily quota resets (next 00:00 UTC)
+    url: https://x402-list.com/api
+per_call_charges:
+  - operation: postAssess
+    path: POST /api/v1/assess
+    price: 0.25
+    currency: USD
+    settlement: USDC on Base (x402)
+    note: >-
+      Fresh AI comparison of a shortlist of 2-8 already-assessed services. Charges
+      only for the new reasoning, never to read an assessment already computed. An
+      optional live probe target costs $0.25 plus that third-party endpoint's own
+      price, non-refundable.
+  - operation: postSuggestion
+    path: POST /api/v1/suggestions
+    price: 0.10
+    currency: USD
+    settlement: USDC on Base (x402)
+    note: Paid suggestion box; manually reviewed, not published.
+  - operation: submitService
+    path: POST /api/v1/submit
+    price: 0
+    currency: USD
+    note: >-
+      Free from your own domain. $1.00 one-off for a service URL on a free
+      compute host (vercel.app, workers.dev and similar), $0.50 to resubmit one
+      rejected less than 14 days ago; both together stack to a single $1.50
+      payment. Static-only hosting (github.io) and dev tunnels (ngrok,
+      trycloudflare) are rejected at any price.

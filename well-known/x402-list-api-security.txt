@@ -1,0 +1,9 @@
+# Security contact for x402-list.com
+# Reports are read by a human. There is no bug bounty: this is a small, independently
+# operated directory, and we would rather hear about a problem than not.
+
+Contact: mailto:info@x402-list.com
+Expires: 2027-09-03T00:18:13.000Z
+Preferred-Languages: en, it
+Canonical: https://x402-list.com/.well-known/security.txt
+Policy: https://x402-list.com/terms

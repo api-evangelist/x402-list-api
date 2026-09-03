@@ -1,0 +1,250 @@
+generated: '2026-09-02'
+method: searched
+source: >-
+  https://x402-list.com/api (the full REST reference, including the "Rate
+  Limiting" and "Data license and attribution" sections), info.description and
+  the component schemas of https://x402-list.com/api/v1/openapi.json, and a live
+  unauthenticated GET https://x402-list.com/api/v1/stats (HTTP 200) whose
+  response headers were read directly.
+description: >-
+  Cross-cutting semantics for the x402 List REST API — the behaviours that hold
+  across every operation rather than any single one. Two of them are unusual
+  enough to be the headline: every 2xx JSON response carries a top-level
+  `provenance` object declaring the CC BY 4.0 data licence, the required
+  attribution string and a canonical cite_as URL (plus a matching
+  Link: rel="license" header), and exhausting the free quota produces a 402 an
+  agent can PAY THROUGH rather than a 429 it must wait out.
+base_url: https://x402-list.com/api/v1
+api_style: REST over HTTPS, JSON responses, form-encoded or JSON request bodies on writes
+
+authentication:
+  scheme: none
+  detail: authentication/x402-list-api-authentication.yml
+  note: >-
+    No keys, no OAuth, no accounts. Payment via x402 replaces authentication on
+    metered and paid calls; ownership actions use a one-time domain proof.
+
+response_envelope:
+  shape: '{"data": ..., "meta": {...}, "provenance": {...}}'
+  data: The payload — an object on a detail read, an array on a collection read.
+  meta: Present on paginated reads only (see pagination).
+  provenance:
+    schema: components.schemas.Provenance
+    present: once per response, top-level, never per item
+    fields:
+      license: SPDX identifier, always CC-BY-4.0
+      attribution_required: boolean, always true under CC BY 4.0
+      attribution: 'ready-to-use credit string, e.g. "Data: x402-list.com (CC BY 4.0)"'
+      cite_as: canonical URL to cite for this specific resource
+      source: canonical site origin behind the data
+    header: 'Link: <https://creativecommons.org/licenses/by/4.0/>; rel="license"'
+    note: >-
+      This is a genuinely rare convention: the licence and the exact attribution
+      string an agent must reproduce travel in-band with the data, so a consumer
+      never has to go read a terms page to know what it may do with a response.
+
+pagination:
+  style: page-number
+  request_params:
+    page: page number, default 1
+    per_page: results per page, default 25, max 100
+  response_fields:
+    meta.total: total number of results
+    meta.page: current page
+    meta.per_page: results per page
+    meta.total_pages: total pages
+  filters_are_server_side: true
+  filter_note: >-
+    Every filter (status, network, category, verified, payment_ready, source,
+    signable, q) is applied server-side, so meta.total counts the FILTERED set,
+    not the directory. The docs state this explicitly per parameter.
+  strict_enums: >-
+    An unrecognised value for an enum-valued filter returns 400 Bad Request
+    rather than being ignored — a deliberate fail-loud choice that stops an agent
+    silently reading an unfiltered directory.
+  docs: https://x402-list.com/api
+
+field_selection:
+  supported: partial
+  mechanism: >-
+    The MCP tool x402_search_services accepts a `fields` projection argument.
+    The REST listServices operation has no equivalent sparse-fieldset parameter.
+  expansion:
+    getService: include_series (MCP) / the per-slug series operations (REST) fold in uptime, price, scores, volume and buyers.
+    getBestServices: include_facilitator_context adds the settlement-rail context block.
+    listFacilitators: include_chains and include_timeseries add the per-chain breakdown and daily series.
+
+search:
+  param: q
+  aliases: [search, query]
+  precedence: q wins when more than one alias is sent
+  scope: case-insensitive substring across name, description, category and base URL
+
+request_tracing:
+  request_id_header: null
+  note: >-
+    No request-id or correlation header is documented or observed. Responses do
+    carry an ETag and Last-Modified, and cf-ray from the Cloudflare edge, but
+    none of those is a first-party trace id.
+
+caching:
+  cache_control: 'private, max-age=300 (observed on GET /stats)'
+  etag: 'weak ETag returned (observed: W/"1e659059c4ecf775")'
+  last_modified: returned
+  note: Conditional requests are supported by the edge; not documented by the provider.
+
+versioning:
+  style: path
+  current: v1
+  base: https://x402-list.com/api/v1
+  spec_version: 1.0.0 (info.version of the OpenAPI document)
+  detail: lifecycle/x402-list-api-lifecycle.yml
+  ranking_version:
+    field: meta.ranking_version
+    current: 3
+    note: >-
+      A second, finer version axis exists for the recommender: meta.ranking_version
+      pins the scoring generation on GET /best, currently 3. Scores stored under
+      an earlier generation are explicitly declared non-comparable. Similarly the
+      compliance checklist grew from 11 to 14 checks and historical score points
+      keep the denominator they were measured with rather than being recomputed —
+      so a consumer must read compliance_passed against the compliance_total of
+      the SAME point.
+
+error_envelope:
+  shape: '{"error": {"code": <integer>, "message": <string>}}'
+  rfc9457: false
+  detail: errors/x402-list-api-problem-types.yml
+
+rate_limit_signalling:
+  headers: [X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-RateLimit-Throttled, Retry-After]
+  metering_headers: [X-Meter-Remaining, X-Meter-Reset]
+  detail: rate-limits/x402-list-api-rate-limits.yml
+
+payment:
+  protocol: x402 v2
+  challenge: 402 + PAYMENT-REQUIRED header (base64 PaymentRequired object) + JSON body
+  proof: PAYMENT-SIGNATURE request header on retry
+  receipt: PAYMENT-RESPONSE response header on the paid 2xx
+  network: Base, USDC
+  detail: plans/x402-list-api-plans-pricing.yml
+
+idempotency:
+  supported: false
+  status: na
+  header: null
+  note: >-
+    No Idempotency-Key header, and the string "idempoten" appears nowhere in the
+    OpenAPI document or the API reference. The exposure is small but real: the
+    five write operations are all human-reviewed queue inserts, and the API's own
+    guard against double-firing is a cooldown (one update request per
+    email+service every 7 days, a 7-day submission cooldown per submitter email)
+    rather than a request-scoped key. An agent that retries POST /submit after a
+    timeout has no way to tell a duplicate from a first attempt except by hitting
+    that cooldown. Recorded as absent, not as not-applicable, because writes
+    exist.
+
+dry_run_mode:
+  supported: false
+  status: na
+  note: >-
+    No dry-run, preview or validate-only parameter on any write operation. The
+    nearest thing is the automatic probe run against a submitted service URL,
+    which reports endpoints_found and errors in the 201 body — but that happens
+    after the submission is created, not instead of creating it.
+
+reversibility:
+  status: none
+  grade: none
+  write_surface: true
+  write_operations: 5
+  reversal_operations: 0
+  note: >-
+    The API publishes NO reversal operation of any kind: there is no DELETE, no
+    cancel, no withdraw, no undo and no rollback anywhere in the 23 operations.
+    Every write is an insert into a human-reviewed queue, and once a submission,
+    an update request, an ownership verification or a paid suggestion is
+    accepted, the caller has no programmatic way to take it back. The x402
+    payments attached to those writes are described by the provider as
+    non-refundable in the one place they are described at all (the $1 free-host
+    submission fee "buys a place in the human review queue, not a listing"; the
+    optional assess probe target is "non-refundable"). Nothing is asserted here
+    about a refund window because the provider states none.
+  surfaces:
+    - operation: submitService
+      path: POST /api/v1/submit
+      reversal: none
+      window: null
+      mitigation: >-
+        Time-boxed rather than reversible: a submission still pending after the
+        7-day review window is AUTO-REJECTED with an email notification, so an
+        unwanted submission decays on its own instead of being cancelled. That is
+        a decay path, not a reversal, and it is recorded as such.
+      docs: https://x402-list.com/api
+    - operation: requestServiceUpdate
+      path: POST /api/v1/services/{slug}/request-update
+      reversal: none
+      window: null
+      mitigation: >-
+        The one-time ownership token expires after 72 hours; an unverified
+        request therefore lapses rather than being withdrawn. A rejected request
+        does not hold the 7-day cooldown, so a correction can be sent
+        immediately — again a re-do path, not an undo.
+      docs: https://x402-list.com/api
+    - operation: reissueOwnershipToken
+      path: POST /api/v1/services/{slug}/reissue-token
+      reversal: none
+      window: null
+      note: Reissuing invalidates the prior token implicitly; no explicit revoke operation is published.
+    - operation: verifyServiceOwnership
+      path: POST /api/v1/services/{slug}/verify-ownership
+      reversal: none
+      window: null
+      note: Verification is terminal for the request; the change still goes to manual human review afterwards.
+    - operation: postSuggestion
+      path: POST /api/v1/suggestions
+      reversal: none
+      window: null
+      note: Paid ($0.10 on Base), manually reviewed, never published. No withdrawal path.
+    - operation: postAssess
+      path: POST /api/v1/assess
+      reversal: none
+      window: null
+      note: >-
+        Paid ($0.25 on Base) computation, not a mutation of directory state — it
+        returns a report. Nothing to reverse beyond the payment, and the optional
+        probe surcharge is stated to be non-refundable.
+  out_of_band:
+    delisting:
+      mechanism: >-
+        Removal from the directory is handled by email (info@x402-list.com) or
+        through the owner-update flow at /services/{slug}/update, both stated in
+        the OpenAPI info.description and in llms.txt. Neither is an API
+        operation.
+      window: null
+  docs: https://x402-list.com/api
+
+data_licensing:
+  data: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+  specification_document: MIT
+  attribution: >-
+    required — credit x402-list.com; the exact string ships in every response's
+    provenance block
+  declared_in:
+    - openapi info.description
+    - openapi info.x-data-license
+    - components.schemas.Provenance
+    - /.well-known/apis.json common[].License
+    - https://x402-list.com/api
+
+measurement_honesty:
+  note: >-
+    A convention worth recording because agents consume these numbers: x402 List
+    labels its own measurement limits in-band. On-chain figures are declared a
+    conservative undercount, USDC-only; a shared payout address is attributed
+    pro-quota across the services sharing it and the per-day volume/buyers series
+    stay address-level with an explicit "do not sum these" caveat; assessment
+    checks that could not be evaluated read `unknown` and are left OUT of the
+    denominator rather than counted as failures; and AI-synthesised fields are
+    marked value/confidence/source (components.schemas.AiMarkedField) so a
+    consumer can separate a measured field from a generated one.

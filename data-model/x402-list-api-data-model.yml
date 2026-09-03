@@ -1,0 +1,196 @@
+generated: '2026-09-02'
+method: derived
+source: >-
+  Derived from components.schemas in https://x402-list.com/api/v1/openapi.json
+  (44 schemas), by following $ref links and id-reference fields, and read
+  against the object descriptions on https://x402-list.com/api.
+description: >-
+  The x402 List domain has three root entities — Service, Facilitator and
+  Network — plus one time-series family and one derived-analysis family hanging
+  off Service. The graph's defining feature is that measured and generated data
+  are kept structurally apart: Assessment holds AI-synthesised fields wrapped in
+  an AiMarkedField (value/confidence/source) while Traction, CheckEntry,
+  PricePoint, VolumePoint and BuyersPoint are measured and stay read-only to
+  everyone including the service owner.
+primary_key: slug (Service), facilitator_id (Facilitator), id/abbreviation (Network)
+id_style: human-readable slugs and short abbreviations, not opaque prefixed ids
+entities:
+  - name: Service
+    schemas: [ServiceListItem, ServiceDetail]
+    key: slug
+    operations: [listServices, getService]
+    description: >-
+      A listed API service that accepts x402 payments. Carries identity
+      (slug, name, description, base_url, website_url, category), provenance
+      (source: submitted | imported:bazaar | imported:x402scan), two independent
+      tier flags with their own decay clocks (verified/verified_until — FORTE,
+      payment_ready/payment_ready_until — BASE), liveness
+      (status, last_checked_at, last_success_at, consecutive_failures,
+      check_interval_minutes, total_checks) and rolled-up uptime.
+  - name: Endpoint
+    schemas: [Endpoint]
+    key: id
+    description: >-
+      One method+path on a Service, with first_seen_at/last_seen_at, is_active,
+      mime_type and its own per-network pricing.
+  - name: PricingEntry
+    schemas: [PricingEntry]
+    description: >-
+      One x402 payment option on an Endpoint for one network: scheme, network
+      plus network_caip2, asset_address (and a normalised form), asset_name,
+      price as an atomic string, price_usd, pay_to and max_timeout_seconds. This
+      is the row that a payTo rotation or a price move is diffed against.
+  - name: Assessment
+    schemas: [Assessment, AssessmentSummary, AiMarkedField]
+    description: >-
+      Per-service evidence-backed evaluation across reliability, compliance,
+      site, domain, economics and risk, plus an AI synthesis. Carries
+      model_id, prompt_version and input_hash so a consumer can tell which
+      generation produced a stored assessment. AI-derived fields are wrapped in
+      AiMarkedField (value/confidence/source) and are structurally distinguishable
+      from measured ones.
+  - name: Traction
+    schemas: [Traction]
+    description: >-
+      Measured on-chain economics for a Service: 30d and all-time volume and
+      tx counts, unique buyers, top_buyer_share_30d, median and max settlement,
+      settled_via, and the shared-payout bookkeeping (shared_payout,
+      shared_with, pro_quota_share, shared_with_services). Carries its own
+      caveat and all_time_caveat strings in-band.
+  - name: Facilitator
+    schemas: [FacilitatorListItem, FacilitatorDetail, FacilitatorChainBreakdown, FacilitatorDetailChain, FacilitatorSettler, FacilitatorBuyers, FacilitatorListedServices, FacilitatorTimeseriesPoint]
+    key: facilitator_id
+    operations: [listFacilitators, getFacilitator]
+    description: >-
+      A settlement operator on the x402 rail. Volume and tx counts over
+      24h/7d/30d/all, a verification state, per-chain breakdown, the on-chain
+      settler addresses the volume is read from, distinct buyers, and the bridge
+      back to the listed Services that settle through it.
+  - name: Network
+    schemas: [Network]
+    key: id
+    operations: [getNetworks]
+    description: >-
+      A chain. Carries both the human abbreviation (BSE, SOL, POL, ARB, BSP,
+      AVX) and the CAIP-2 identifier, chain_type, is_mainnet, explorer_url and
+      rolled-up service_count / avg_uptime.
+  - name: ServiceChangeEvent
+    schemas: [ServiceChangeEvent, ChangeSummary, CanonicalAccept]
+    operations: [listServiceChanges]
+    description: >-
+      An observed change on a Service's x402 wire — payTo rotation, price move or
+      schema drift — with observed_at and the old/new snapshots of the whole
+      accepts[] array it was diffed from.
+  - name: CheckEntry
+    schemas: [CheckEntry, GlobalCheckEntry]
+    operations: [getServiceChecks, getGlobalChecks]
+    description: One monitoring probe result — checked_at, response_time_ms, status_code, is_up, error_message, endpoints_found.
+  - name: Payment
+    schemas: [PaymentRequired, PaymentRequirements]
+    description: >-
+      Not a stored entity but the x402 envelope this API itself returns on a 402,
+      and structurally the same shape it records for listed services.
+  - name: Provenance
+    schemas: [Provenance]
+    description: >-
+      The licence/attribution block attached once, top-level, to every 2xx
+      response. Not a domain object — a response-level contract.
+  - name: Submission
+    schemas: [ServiceSubmissionRequest, FacilitatorSubmissionRequest, ServiceUpdateRequest, SuggestionRequest]
+    operations: [submitService, requestServiceUpdate, reissueOwnershipToken, verifyServiceOwnership, postSuggestion]
+    description: The write side — queue inserts, all human-reviewed, none of them reversible through the API.
+relationships:
+  - from: Service
+    to: Endpoint
+    type: has_many
+    via: ServiceDetail.endpoints[]
+  - from: Endpoint
+    to: PricingEntry
+    type: has_many
+    via: Endpoint.pricing[]
+  - from: Service
+    to: Assessment
+    type: has_one
+    via: ServiceDetail.assessment (null until first assessed)
+  - from: Assessment
+    to: Traction
+    type: has_one
+    via: Assessment.traction
+  - from: Service
+    to: Network
+    type: has_many
+    via: ServiceDetail.networks[] and networks_caip2[] (abbreviation / CAIP-2 id references)
+  - from: PricingEntry
+    to: Network
+    type: belongs_to
+    via: PricingEntry.network and network_caip2
+  - from: Service
+    to: CheckEntry
+    type: has_many
+    via: getServiceChecks (GET /services/{slug}/checks)
+  - from: Service
+    to: PricePoint
+    type: has_many
+    via: getServicePriceHistory (GET /services/{slug}/price)
+  - from: Service
+    to: ScorePoint
+    type: has_many
+    via: getServiceScores (GET /services/{slug}/scores)
+  - from: Service
+    to: VolumePoint
+    type: has_many
+    via: getServiceVolume (GET /services/{slug}/volume) — address-level, not per-service, when the payout is shared
+  - from: Service
+    to: BuyersPoint
+    type: has_many
+    via: getServiceBuyers (GET /services/{slug}/buyers) — address-level, an upper bound
+  - from: Service
+    to: ServiceChangeEvent
+    type: has_many
+    via: ServiceChangeEvent.slug
+  - from: Facilitator
+    to: FacilitatorSettler
+    type: has_many
+    via: FacilitatorDetail.settlers[] (on-chain addresses the volume is read from)
+  - from: Facilitator
+    to: FacilitatorDetailChain
+    type: has_many
+    via: FacilitatorDetail.chains[]
+  - from: Facilitator
+    to: FacilitatorTimeseriesPoint
+    type: has_many
+    via: FacilitatorDetail.series[] / FacilitatorListItem.timeseries[]
+  - from: Facilitator
+    to: Service
+    type: has_many
+    via: FacilitatorDetail.listed_services (which directory services settle via this facilitator)
+  - from: Service
+    to: Facilitator
+    type: has_many
+    via: Traction.settled_via[] / settled_via_detail[] (the facilitators that settled this service over 30d)
+  - from: Service
+    to: Service
+    type: has_many
+    via: Traction.shared_with_services[] — other listed services sharing the same payout address
+  - from: FacilitatorSettler
+    to: Network
+    type: belongs_to
+    via: FacilitatorSettler.network / network_caip2
+join_hazards:
+  - >-
+    Traction figures on a SHARED payout address are attributed pro-quota (the
+    address total divided by the services sharing it) so the summary block sums
+    correctly across services — but the per-day /volume and /buyers series stay
+    ADDRESS-LEVEL. Summing those across shared-payout services double-counts.
+    The provider states this in-band via Traction.caveat.
+  - >-
+    Distinct buyers are counted per payout address, so a service settling to more
+    than one address yields an upper bound, and facilitator per-chain buyers are
+    not de-duplicated across chains.
+  - >-
+    ScorePoint.compliance_passed must be read against the compliance_total of the
+    SAME point: the checklist grew from 11 to 14 checks and earlier points keep
+    the denominator they were measured with.
+  - >-
+    meta.ranking_version pins the recommender scoring generation (currently 3).
+    Scores stored under an earlier generation are declared non-comparable.

@@ -1,0 +1,51 @@
+{
+  "aod": "0.1",
+  "provider": {
+    "name": "x402 List",
+    "url": "https://x402-list.com",
+    "portalUrl": "https://x402-list.com/api",
+    "apisJsonUrl": "https://x402-list.com/.well-known/apis.json"
+  },
+  "maturity": "self-serve",
+  "account": {
+    "required": false,
+    "agentPolicy": "allowed",
+    "prerequisites": [],
+    "plans": [
+      {
+        "name": "Free",
+        "requiredFor": "Keyless read access for agents and point queries: up to 2,000 GET requests per day per IP (UTC day) on /api/v1/*, rate limited to 200 requests per minute per IP. No authentication.",
+        "url": "https://x402-list.com/api"
+      },
+      {
+        "name": "Metered (x402)",
+        "requiredFor": "Sustained reads beyond the free daily quota: $0.01 per request on Base, settled per-request via x402 (HTTP 402 Payment Required). Metered responses carry X-Meter-Remaining and X-Meter-Reset headers.",
+        "url": "https://x402-list.com/api"
+      }
+    ],
+    "termsOfService": {
+      "url": "https://x402-list.com/terms",
+      "acceptance": "implicit"
+    }
+  },
+  "verification": [],
+  "registration": {
+    "mechanisms": [
+      {
+        "type": "open",
+        "description": "No registration and no account: reads are keyless and anonymous at the free tier. Overage is settled per-request via x402 on Base, so there is no application to create and no credential to store.",
+        "baseUrl": "https://x402-list.com/api/v1",
+        "docsUrls": [
+          "https://x402-list.com/api"
+        ]
+      }
+    ]
+  },
+  "credentials": [],
+  "economics": {
+    "pricingUrl": "https://x402-list.com/api",
+    "freeTier": "Up to 2,000 GET requests per day per IP (UTC day) on /api/v1/*, 200 requests per minute per IP, no authentication.",
+    "rateLimitsUrl": "https://x402-list.com/api"
+  },
+  "gaps": []
+}

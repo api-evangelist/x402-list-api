@@ -1,0 +1,49 @@
+# Spectral governance ruleset for the x402 List OpenAPI document.
+#
+# Referenced from /.well-known/apis.json (rules[].type = SpectralRules) as the machine-readable
+# governance artifact for apis.io readiness, and used by CI. This served copy is the single source
+# of truth; the project-root .spectral.yaml simply extends it so `spectral lint` auto-discovers it.
+#
+# Lint the live contract with:
+#   npx @stoplight/spectral-cli lint https://x402-list.com/api/v1/openapi.json
+extends:
+  - "spectral:oas"
+rules:
+  # An agent-facing contract must name a contact, a license, and its terms of service.
+  x402-info-contact:
+    description: The API info object must declare a contact.
+    given: "$.info"
+    severity: error
+    then:
+      field: contact
+      function: truthy
+  x402-info-license:
+    description: The API info object must declare a license.
+    given: "$.info"
+    severity: error
+    then:
+      field: license
+      function: truthy
+  x402-info-terms-of-service:
+    description: The API info object should declare termsOfService.
+    given: "$.info"
+    severity: warn
+    then:
+      field: termsOfService
+      function: truthy
+  # The document must declare at least one server so an agent knows where to call.
+  x402-servers-defined:
+    description: The document must declare at least one server.
+    given: "$"
+    severity: error
+    then:
+      field: servers
+      function: truthy
+  # Every operation should carry a description an agent can read.
+  x402-operation-description:
+    description: Every operation should have a description.
+    given: "$.paths[*][get,post,put,patch,delete]"
+    severity: warn
+    then:
+      field: description
+      function: truthy

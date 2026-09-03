@@ -1,0 +1,108 @@
+generated: '2026-09-02'
+method: probed
+status: published
+source: >-
+  Live MCP handshake against https://mcp.x402-list.com/mcp on 2026-09-02:
+  initialize (HTTP 200, Streamable HTTP / text-event-stream, mcp-session-id
+  issued) followed by tools/list (HTTP 200) with no credentials. Server identity
+  and tool list are the server's own response, saved verbatim to
+  x402-list-api-mcp-tools.json. Local stdio variant confirmed on npm
+  (registry.npmjs.org/x402-list-mcp) and at github.com/mcccsm/x402-list-mcp, and
+  documented at https://x402-list.com/api and in https://x402-list.com/llms.txt.
+description: >-
+  x402 List ships a first-party MCP server in both shapes: a hosted Streamable
+  HTTP endpoint at https://mcp.x402-list.com/mcp that answers tools/list
+  anonymously, and a local stdio build published to npm as x402-list-mcp. Seven
+  tools: six read-only wrappers over the public REST directory, plus one paid
+  tool (x402_assess_services) that charges $0.25 USDC on Base via x402. The paid
+  tool takes the caller's own x402 payment signature as a tool argument — the
+  server states it holds no keys — so there is no OAuth or API-key layer on the
+  server at all.
+server:
+  name: x402-list-mcp
+  version: 0.5.1
+  transport: streamable-http
+  url: https://mcp.x402-list.com/mcp
+  auth: none
+  protocol_version: '2025-06-18'
+  capabilities:
+    tools:
+      listChanged: true
+  instructions_excerpt: >-
+    "x402-list is the directory of services that accept x402 payments: more than
+    500 listed and live-monitored, plus on-chain-verified settlement volume per
+    facilitator... When the free ranking cannot decide, x402_assess_services buys
+    a fresh AI comparison of a shortlist for $0.25 USDC on Base, signed by your
+    own wallet: this server holds no keys."
+local:
+  name: x402-list-mcp
+  transport: stdio
+  install: npx -y x402-list-mcp
+  registry: npm
+  package: https://www.npmjs.com/package/x402-list-mcp
+  source: https://github.com/mcccsm/x402-list-mcp
+  version: 0.5.1
+  published: '2026-09-01'
+  license: MIT
+client_config_example: |
+  {
+    "mcpServers": {
+      "x402-list": {
+        "command": "npx",
+        "args": ["-y", "x402-list-mcp"]
+      }
+    }
+  }
+tools:
+  - name: x402_search_services
+    paid: false
+    parameters: [q, category, network, status, verified_only, signable, sort, page, per_page, fields]
+    description: >-
+      First call when you do not know which x402 service exists for a job:
+      narrows a directory of 500+ listed services.
+  - name: x402_get_service
+    paid: false
+    parameters: [slug, include_series]
+    description: >-
+      The full record behind a directory row, once you hold a slug and are
+      deciding whether to commit to that service.
+  - name: x402_find_best_service
+    paid: false
+    parameters: [q, category, network, max_price_usd, require_verified, prefer, limit, include_facilitator_context]
+    description: >-
+      Free deterministic ranking: turns a need stated in words into one service
+      to call rather than a list to read.
+  - name: x402_check_health
+    paid: false
+    parameters: [slug, uptime_period, include_services]
+    description: >-
+      Is this service up right now — call before sending a payment, or right
+      after a call unexpectedly failed.
+  - name: x402_facilitator_volumes
+    paid: false
+    parameters: [timeframe, days, include_chains, include_timeseries, page, per_page]
+    description: >-
+      Which x402 facilitator actually settles money, measured on-chain rather
+      than self-reported.
+  - name: x402_assess_services
+    paid: true
+    price: 0.25 USDC on Base (x402)
+    parameters: [services, question, probe, payment_signature_b64]
+    description: >-
+      Fresh AI comparison of 2-8 finalists for a stated need, when the free
+      signals have run out. Caller signs the payment with their own wallet.
+  - name: x402_change_events
+    paid: false
+    parameters: [service, type, days, page, per_page]
+    description: >-
+      payTo rotations, price moves and schema drift observed on the x402 wire —
+      check before trusting anything cached about a service.
+tool_count: 7
+paid_tool_count: 1
+deployment:
+  mode: both
+  endpoint: https://mcp.x402-list.com/mcp
+  install: npx -y x402-list-mcp
+  package: https://www.npmjs.com/package/x402-list-mcp
+  auth: none
+  verified: probed

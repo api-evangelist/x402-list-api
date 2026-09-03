@@ -1,0 +1,90 @@
+generated: '2026-09-02'
+method: searched
+source: >-
+  https://x402-list.com/api (API reference), https://x402-list.com/status
+  (HTTP 200, system-wide monitoring dashboard),
+  https://x402-list.com/api/health (HTTP 200, application/json),
+  https://x402-list.com/methodology (HTTP 200),
+  https://x402-list.com/terms (HTTP 200),
+  https://x402-list.com/.well-known/api-catalog (HTTP 200, whose linkset names
+  the health endpoint under rel "status"), and the OpenAPI document at
+  https://x402-list.com/api/v1/openapi.json.
+description: >-
+  x402 List versions its API in the path (/api/v1) and runs a genuine public
+  status surface — both a human dashboard at /status and a machine-readable
+  /api/health that its own RFC 9727 api-catalog advertises under the "status"
+  link relation. What it does NOT publish is a deprecation or sunset policy: no
+  operation in the contract is marked deprecated, the strings "deprecated" and
+  "sunset" appear nowhere in the OpenAPI document, and no RFC 8594
+  Deprecation/Sunset headers are documented or observed. There is also no SLA.
+  That is the honest gap for a young, single-operator directory, and it is
+  recorded rather than smoothed over.
+versioning:
+  scheme: path
+  current_version: v1
+  base: https://x402-list.com/api/v1
+  spec_version: 1.0.0
+  policy_published: false
+  note: >-
+    A second version axis is published and does have a stated compatibility rule:
+    meta.ranking_version on GET /best pins the recommender scoring generation
+    (currently 3) and the provider states plainly that scores stored under an
+    earlier generation are not comparable. The compliance checklist likewise grew
+    from 11 checks to 14 and historical score points keep the denominator they
+    were measured with. Both are documented data-compatibility contracts, not API
+    version policy.
+deprecation:
+  policy_published: false
+  policy_url: null
+  rfc8594_headers: false
+  deprecated_operations: []
+  sunset_dates: []
+  evidence: >-
+    Zero occurrences of "deprecated" or "sunset" in
+    https://x402-list.com/api/v1/openapi.json; no deprecation section at
+    https://x402-list.com/api.
+  semantic_changes_disclosed:
+    - change: >-
+        The `verified` filter on GET /services was narrowed to the FORTE tier (a
+        paid delivery-probe settled on-chain and delivered, revocable on
+        payTo/schema drift); the broad "answers a valid x402 challenge and is
+        alive" signal it used to carry moved to the new `payment_ready`
+        parameter.
+      disclosed_at: https://x402-list.com/api
+      note: >-
+        A breaking semantic change to an existing parameter, disclosed in prose
+        on the reference page rather than through a version bump or a
+        deprecation header. Recorded here because it is exactly the kind of
+        change a Sunset/Deprecation policy would otherwise carry.
+status:
+  status_page: https://x402-list.com/status
+  status_page_status: 200
+  health_endpoint: https://x402-list.com/api/health
+  health_endpoint_status: 200
+  advertised_in: /.well-known/api-catalog (linkset rel "status")
+  covers: >-
+    System-wide monitoring dashboard for the directory itself and for every
+    listed service; per-service checks run every 5-15 minutes with rolling
+    24h/7d/30d/90d uptime windows.
+sla:
+  published: false
+  note: No availability commitment or support-response target is published; terms are at https://x402-list.com/terms.
+support:
+  contact: mailto:info@x402-list.com
+  page: https://x402-list.com/contact
+  security_contact: https://x402-list.com/.well-known/security.txt
+  bug_bounty: false
+  bug_bounty_note: The served security.txt states explicitly that there is no bug bounty.
+change_feed:
+  url: https://x402-list.com/changes.xml
+  kind: directory data changes, not API version changes
+  detail: changelog/x402-list-api-changelog.yml
+operator:
+  name: Cosimo Miccolis
+  form: individual
+  jurisdiction: Italy
+  role: operator and data controller
+  source: https://x402-list.com/llms.txt
+  note: >-
+    Single-operator project. Attribution guidance from the provider is to cite
+    the site, not the operator.

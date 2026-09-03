@@ -1,0 +1,40 @@
+generated: '2026-09-02'
+method: generated
+source: >-
+  Authored for this repository from the provider's own contract at
+  https://x402-list.com/api/v1/openapi.json and the reference at
+  https://x402-list.com/api. x402 List publishes no AGENTS.md and no skills
+  bundle of its own — https://x402-list.com/.well-known/ai-plugin.json returns
+  404 — so these are generated, not harvested. Every operationId named in them
+  appears verbatim in the provider's contract.
+description: >-
+  Three packaged Agent Skills for the x402 List API, one per marquee flow:
+  choosing and vetting a service before paying it, writing to the directory, and
+  comparing settlement rails. Each carries the runtime rules that actually bite —
+  the 402-not-429 metering behaviour, the absence of idempotency and of any
+  reversal path, and the measurement caveats that must not be summed away.
+skills:
+  - name: pick-and-verify-an-x402-service
+    file: pick-and-verify-an-x402-service.md
+    flow: discovery and pre-payment verification
+    operations: [getBestServices, listServices, getService, getServiceChecks, listServiceChanges]
+    mcp_equivalents: [x402_find_best_service, x402_search_services, x402_get_service, x402_check_health, x402_change_events]
+  - name: list-a-service-in-the-x402-directory
+    file: list-a-service-in-the-x402-directory.md
+    flow: submission and owner-update (the write surface)
+    operations: [submitService, requestServiceUpdate, verifyServiceOwnership, reissueOwnershipToken]
+    mcp_equivalents: []
+    note: >-
+      No MCP tool covers any of these — an agent can read the directory over MCP
+      but cannot change it.
+  - name: compare-x402-settlement-rails
+    file: compare-x402-settlement-rails.md
+    flow: facilitator / settlement analysis
+    operations: [listFacilitators, getFacilitator, getStats, getNetworks]
+    mcp_equivalents: [x402_facilitator_volumes]
+grounding:
+  contract: openapi/_original/x402-list-api-openapi.json
+  conventions: conventions/x402-list-api-conventions.yml
+  errors: errors/x402-list-api-problem-types.yml
+  rate_limits: rate-limits/x402-list-api-rate-limits.yml
+  crosswalk: mcp/x402-list-api-tool-crosswalk.yml

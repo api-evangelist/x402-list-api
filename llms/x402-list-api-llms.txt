@@ -1,0 +1,85 @@
+# x402 List
+
+> x402 List is the **agent-first** open directory of x402 protocol services. It indexes APIs that accept payments via the HTTP 402 standard and exposes every service, uptime metric, and price as machine-readable JSON for AI agents, aggregators, and integrations.
+
+Last updated: 2026-09-03 (live, generated from the directory database).
+
+License: the directory data is CC BY 4.0. Attribution required: cite x402-list.com.
+
+## Live directory snapshot
+
+- Total listed services: 631
+- Verified services (FORTE tier, treno D3: x402 List paid a real x402 call and the service delivered; no time decay, revoked only on payTo/schema drift; starts at 0 and grows only with paid probes): 13
+- Payment-ready services (BASE tier: passed a live x402 402-handshake probe and still responding, established free by the monitor at scale; discovery, not endorsement; decays to "listed" after 7 days of failing probes and heals on the next good one): 596
+- Categories (9): Data (265), AI (104), Finance (78), Verification (64), Blockchain (41), Content (31), Other (31), Compute (15), Infrastructure (2). All names are valid API category filter values. Curated browse pages exist at /services/category/<name> (lowercase) only for: Data, AI, Finance, Verification, Blockchain, Content, Compute (whitelisted pages also 404 under 2 live services; non-whitelisted categories have no browse page).
+- Operator hub pages aggregate every listed service of one operator, with all endpoints expanded, at /services/operator/<key>. Curated for: LoneStarOracle (/services/operator/lonestaroracle), x402 Atlas (/services/operator/x402atlas), Hugen (/services/operator/hugen), ForgeMesh (/services/operator/forgemesh), Leeworks (/services/operator/leeworks), PayAPI Market (/services/operator/payapi-market), Agentic JP (/services/operator/agentic-jp) (each also 404s while the operator has fewer than 2 live services).
+- Measured 30d service traction (a measured floor across listed services, NOT an ecosystem total): 5,063 distinct on-chain buyers, $189,151 USDC settlement volume, 7,216,022 settlements, across 473 measured services on BSE, POL, SOL. USDC via measured facilitators only; deduplicated on settlement identity (network,tx_hash,log_index), never summed from the per-service figures. Listed services cover 13.9% of the flow measurable by our tracked settlers over the same 30d window (the facilitator daily volume we measure, not the whole ecosystem). The top 10 services account for 97.0% of that settlement volume (a concentration disclosure).
+- Uptime is tracked in rolling 24h / 7d / 30d / 90d windows; the 90d window is built from daily rollups and fills progressively since monitoring began.
+
+## Facilitators measured on-chain
+
+x402-list measures on-chain USDC settlement volume for every facilitator it tracks (37 in total), read directly from each facilitator's own settler addresses on-chain and never self-reported, over a trailing 30-day window. The largest by that measured volume are Coinbase ($661,325), Meridian ($243,022), Polygon Facilitator ($160,172) and FluxA ($130,643). Every figure is a measured floor: USDC only, a conservative undercount, and a record of settlement volume observed on the wire, never an endorsement or a quality ranking of a facilitator. x402-list publishes the full per-facilitator volume, per-chain breakdown, and settler addresses at https://x402-list.com/api/v1/facilitators.
+
+## Change events: payTo rotations, price moves, and schema drift
+
+x402-list records every change it observes on the live x402 wire, diffed from the full accepts[] array on each probe of a listed service. Over the trailing 90 days x402-list logged 7,191 change events, among them 1,074 payTo (settlement address) rotations, 724 price moves, and 5,393 payment-schema changes. Because the diff compares the whole payment envelope and not the price alone, a payTo rotation at an unchanged price is caught here, a change invisible to anyone tracking prices only, so an agent can check whether the address it is about to pay still belongs to the service it means to pay. x402-list serves the full feed, filterable by service, type, and time window, at https://x402-list.com/changes (human-browsable) and https://x402-list.com/api/v1/changes (JSON).
+
+## What this site contains
+
+- A searchable directory of x402-compatible API services
+- Continuous uptime monitoring (per-service checks every 5-15 minutes) and status for each service
+- Pricing data, endpoint counts, and network information
+- A per-service evidence-backed assessment (reliability, x402 compliance, site/docs, domain, economics, deterministic risk, plus an AI synthesis marked value/confidence/source); measured values stay read-only
+- A per-service ranked verdict on every service page: a composite score out of 100 with a verbal band (strong, solid, mixed, weak), the service's position inside its category, and the ranked alternatives in that category. It is derived deterministically from the measured families above by the same ranking engine as GET /api/v1/best, never by a language model and never sold; the component measurements stay published beside it
+- x402 compliance is a deterministic 14-check list run against the service's own HTTP 402 response, three checks of which cover signability: whether the captured payload declares the current x402 version (2), whether every EVM entry carries the EIP-712 domain parameters (extra.name and extra.version) that a standard x402 client requires in order to sign a payment, and whether an envelope declaring version 2 was delivered in the payment-required header. What we measure is the payment envelope on the wire, not the quality of what the service sells. A service with at least one EVM route missing those domain parameters does not grade above C, and the claim behind that ceiling is precisely "a standard x402 client cannot sign a payment for this route", never "this service is unreliable". A check that could not be evaluated (nothing captured yet, or not applicable, for instance the EIP-712 domain on a Solana-only service) reads unknown and is left out of the denominator, never counted as a failure
+- On-chain verified facilitator settlement volume (measured across all enabled chains)
+- Per-service on-chain traction in each assessment (30d volume, distinct buyers, largest-buyer concentration), attributed by settler address over the service payTo mapping, USDC only; a conservative undercount. A shared payout address is attributed pro-quota (the address total divided by the services sharing it); the daily volume/buyers series stay address-level, so do not sum them across shared-payout services
+- A public REST API for programmatic access at /api/v1/
+- Self-service owner updates: operators of a listed service can propose metadata changes with a one-time domain proof at /services/{slug}/update (manually reviewed; the flow is documented in /llms-full.txt)
+- Provenance disclosure: each service carries a source recording how it entered the directory: submitted (an operator or user submitted it through /submit) or imported:<origin> (auto-imported from a public x402 index: imported:bazaar from the x402 Bazaar, imported:x402scan from x402scan). An imported listing is not an operator endorsement; the operator can claim and correct it through the owner-update flow at /services/{slug}/update
+- A paid suggestion box at POST /api/v1/suggestions: propose changes to the directory for a $0.10 x402 payment on Base (agent-first; manually reviewed, not published)
+- An on-demand paid assessment at POST /api/v1/assess: a fresh AI comparison of a shortlist of already-assessed services for your stated need, for a $0.25 x402 payment on Base (agent-first; it charges only for the fresh reasoning, never to read an already-computed assessment). An optional probe target also pays one listed service live and analyzes it, for $0.25 plus that endpoint price X (non-refundable; the report gains a truncated probe_report block, never the verbatim third-party body)
+- Submitting a service (via /submit or POST /api/v1/submit) is free from your own domain. Two cases cost an x402 payment on Base (USDC): a service URL on a free compute host (vercel.app, workers.dev and similar) is a one-off $1, and resubmitting one that was rejected less than 14 days ago is a one-time $0.50 anti-spam fee; when both apply they stack into a single $1.50 payment. After 14 days resubmitting is free again, but the free-host fee never expires and is never refunded: it buys a place in the human review queue, not a listing. A service URL on static-only hosting (github.io and similar) or on a dev tunnel (ngrok, trycloudflare) is rejected at any price
+- An OpenAPI 3.1 specification at /openapi.json
+
+## Key pages
+
+- [All Services](https://x402-list.com/services): Complete directory with filtering and search
+- [Facilitators](https://x402-list.com/facilitators): On-chain verified settlement volume per facilitator
+- [State of x402](https://x402-list.com/state-of-x402): Dated, citable directory statistics
+- [About](https://x402-list.com/about): Explanation of the x402 protocol and this project
+- [Methodology](https://x402-list.com/methodology): How the payment-ready and verified tiers, uptime, on-chain facilitator volume, and the x402 compliance checklist are measured, including what the signability checks do and do not claim
+- [API Docs](https://x402-list.com/api): REST API for agents and integrations
+- [Submit](https://x402-list.com/submit): Submit a new x402 service or facilitator for listing
+- [Status](https://x402-list.com/status): System-wide monitoring dashboard
+- [Learn](https://x402-list.com/learn): Articles and guides about the x402 protocol
+
+## API access
+
+Base URL: https://x402-list.com/api/v1/
+All endpoints return JSON. No authentication required for read access. Rate limit: 200 req/min per IP (soft-throttled above 100: advisory X-RateLimit-Throttled header, requests still succeed). Reads are free for agents and point queries; sustained bulk pulling beyond 2,000 requests/day per IP is metered via x402 at $0.01/request.
+
+## Agent-ready resources
+
+- https://x402-list.com/api/v1/services - JSON directory mirror of /services (each item carries a compact assessment summary and a source provenance field; filterable by ?source=submitted|imported and by ?signable=true|false, the signability of the last observed 402 envelope: true = no EVM route was observed missing the EIP-712 domain parameters a standard client needs in order to sign, false = at least one such route was observed. A service whose latest assessment has not measured that check yet matches neither value, so omit the parameter to include it; both values filter server-side, so meta.total counts the filtered set; text search via ?q=, with search= and query= accepted as aliases)
+- https://x402-list.com/api/v1/best - Best-service recommender (JSON): ranks the directory for a stated need in one call (?q=&category=&network=&max_price_usd=&require_verified=&prefer=&limit=&include_facilitator_context=), the same relevance-then-quality ranking as the MCP x402_find_best_service tool; free and metered like other reads. meta.ranking_version pins the scoring generation and is currently 3: generation 2 capped the compliance term at 0.6 (the floor of the C band) when at least one EVM route is missing those EIP-712 domain parameters, and generation 3 gates the traction term on an absolute 30-day volume floor, discounts a payout concentrated on one buyer, and scores a service that publishes no payTo as zero, so scores stored under an earlier generation are not comparable with these
+- https://x402-list.com/api/v1/services/{slug}/price - Captured 402 price movement over time (JSON)
+- https://x402-list.com/api/v1/services/{slug}/scores - Measured assessment sub-scores over time (JSON; read compliance_passed against the compliance_total of the SAME point, since the checklist grew from 11 to 14 checks when the signability checks landed: the series carries a step at that date, and earlier points keep the denominator they were measured with rather than being recomputed)
+- https://x402-list.com/api/v1/services/{slug}/volume - Per-service on-chain settlement volume per UTC day (JSON; a conservative undercount, operator-level for a shared payout address, so do not sum it across services that share one; rolled up hourly, so the latest day can be up to about an hour behind)
+- https://x402-list.com/api/v1/services/{slug}/buyers - Per-service distinct on-chain buyers per UTC day (JSON; the same operator-level conservative undercount, rolled up hourly; distinct buyers are counted per payout address, so a service settling to more than one address is an upper bound)
+- https://x402-list.com/api/v1/facilitators - On-chain facilitator volume (JSON)
+- https://x402-list.com/api/v1/facilitators/{id} - Single facilitator detail (JSON): per-chain volume, on-chain settlers, per-chain distinct buyers (an upper bound, not de-duplicated across chains), average USD per settlement and a 7d trend, a daily series (period=all for full history), and the listed-services bridge (which directory services settle via this facilitator)
+- https://x402-list.com/openapi.json - OpenAPI 3.1 specification (301 to /api/v1/openapi.json)
+- https://x402-list.com/llms-full.txt - Full machine-readable service catalogue + data model
+- https://x402-list.com/sitemap.xml - XML sitemap including dynamic service pages
+- MCP server (hosted, Streamable HTTP): https://mcp.x402-list.com/mcp
+- MCP server (local stdio): `npx -y x402-list-mcp` (npm package x402-list-mcp, 7 tools: 6 read-only plus 1 paid, x402_assess_services, $0.25 USDC on Base)
+- Operated by: Cosimo Miccolis (individual, Italy), who is also the data controller. Cite the site, not the operator, when attributing the data
+- Contact: info@x402-list.com for data disputes or delisting
+- https://x402-list.com/privacy - Privacy policy: what is collected, the legal basis for it, how long it is kept, and how to exercise your rights
+- https://x402-list.com/terms - Terms of use
+- https://x402-list.com/.well-known/security.txt - Security contact (RFC 9116)
+
+## Extended context
+
+For the full per-service catalogue (name, category, status, uptime, base URL) and data model, see: https://x402-list.com/llms-full.txt

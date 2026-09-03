@@ -1,0 +1,79 @@
+specification: API Commons Rate Limits
+specificationVersion: '0.1'
+provider: x402 List
+providerId: x402-list-api
+generated: '2026-09-02'
+method: probed
+source: >-
+  Observed live on an unauthenticated GET https://x402-list.com/api/v1/stats
+  (HTTP 200, 2026-09-02): the response carried x-ratelimit-limit: 200,
+  x-ratelimit-remaining: 199, x-ratelimit-reset, x-meter-remaining: 1997 and
+  x-meter-reset, and named all six headers in
+  access-control-expose-headers. Documented at https://x402-list.com/api
+  ("Rate Limiting") and in info.description of
+  https://x402-list.com/api/v1/openapi.json.
+description: >-
+  Two independent throttles, both keyed on client IP and both signalled in
+  response headers rather than only in prose: a 200 req/min sliding-window rate
+  limit that returns 429 with Retry-After, and a 2,000 GET/day metering quota
+  that returns 402 and can be paid through rather than waited out. The soft
+  advisory band above 100 req/min is unusual and worth noting — requests still
+  succeed, the API just tells the client it is approaching the ceiling.
+scope: per-IP (no accounts or API keys exist)
+limit_count: 2
+headers:
+  rateLimit: X-RateLimit-Limit
+  rateLimitRemaining: X-RateLimit-Remaining
+  rateLimitReset: X-RateLimit-Reset
+  rateLimitThrottled: X-RateLimit-Throttled
+  meterRemaining: X-Meter-Remaining
+  meterReset: X-Meter-Reset
+  retryAfter: Retry-After
+  exposed_via: >-
+    access-control-expose-headers: X-Meter-Remaining, X-Meter-Reset,
+    X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset,
+    X-RateLimit-Throttled
+responseCodes:
+  throttled: 429
+  metered: 402
+limits:
+  - name: Request rate
+    scope: ip
+    metric: requests_per_minute
+    limit: 200
+    burst: null
+    timeFrame: minute
+    window: sliding, resets every minute
+    on_exhaustion: >-
+      429 Too Many Requests with a Retry-After header giving seconds until the
+      window resets.
+    advisory_threshold:
+      above: 100
+      behavior: >-
+        X-RateLimit-Throttled: true is returned as an advisory signal; requests
+        still succeed.
+  - name: Free daily read quota (metering)
+    scope: ip
+    metric: get_requests_per_day
+    limit: 2000
+    timeFrame: day
+    window: UTC day, resets at 00:00 UTC
+    applies_to: GET /api/v1/*
+    on_exhaustion: >-
+      402 Payment Required carrying an x402 v2 PaymentRequired body (and the
+      same object base64-encoded in the PAYMENT-REQUIRED header). Each further
+      request costs $0.01 USDC on Base; retry with a PAYMENT-SIGNATURE header.
+    observed:
+      x_meter_remaining: 1997
+      probed_at: '2026-09-02'
+per_operation_limits:
+  - operation: requestServiceUpdate
+    limit: one update request per (email, service) pair every 7 days
+    on_exhaustion: 429 with Retry-After
+    note: Only a live or approved request holds the window; a rejected one does not.
+  - operation: submitService
+    limit: 7-day cooldown per submitter email, tracked separately per submission type
+    note: >-
+      A pending service submission does not block a facilitator submission from
+      the same email. Submissions still pending after the 7-day review window are
+      auto-rejected with an email notification.

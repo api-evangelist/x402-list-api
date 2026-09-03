@@ -1,0 +1,95 @@
+generated: '2026-09-02'
+method: probed
+source: >-
+  Direct unauthenticated HTTPS probes of every /.well-known/ path in the pipeline
+  probe set against both hosts this provider operates: the API/site host
+  x402-list.com (baseURL https://x402-list.com/api/v1) and the hosted MCP host
+  mcp.x402-list.com. Bodies saved verbatim beside this index.
+description: >-
+  x402 List serves a genuinely populated /.well-known/ surface on x402-list.com:
+  an RFC 9116 security.txt, an RFC 9727 api-catalog linkset pointing at the
+  OpenAPI, the human docs and the health endpoint, an APIs.json 0.23 index, plus
+  two non-standard-but-real discovery documents (an api-onboarding descriptor and
+  a served Spectral governance ruleset) that the APIs.json itself references.
+  There is no OAuth/OIDC surface anywhere (reads are keyless; paid calls settle
+  over x402 on Base, not OAuth), and no agent card on either host.
+hosts:
+  - host: x402-list.com
+    documents:
+      - path: /.well-known/security.txt
+        status: 200
+        file: x402-list-api-security.txt
+        content_type: text/plain; charset=utf-8
+        note: >-
+          RFC 9116. Contact mailto:info@x402-list.com, Expires 2027-09-03,
+          Canonical self-reference, Policy https://x402-list.com/terms.
+          States explicitly that there is no bug bounty.
+      - path: /.well-known/api-catalog
+        status: 200
+        file: x402-list-api-api-catalog.json
+        content_type: application/linkset+json; charset=utf-8
+        note: >-
+          RFC 9727 API catalog as an RFC 9264 linkset. Anchor
+          https://x402-list.com/api/v1/ with service-desc (openapi.json),
+          service-doc (/api) and status (/api/health) links.
+      - path: /.well-known/apis.json
+        status: 200
+        file: x402-list-api-apis.json
+        content_type: application/json; charset=utf-8
+        note: >-
+          APIs.json specificationVersion 0.23, aid x402-list.com. Declares one
+          API, five common properties, a SpectralRules governance entry and a
+          named maintainer. Not served at the legacy root /apis.json (404).
+      - path: /.well-known/api-onboarding
+        status: 200
+        file: x402-list-api-api-onboarding.json
+        content_type: application/json; charset=utf-8
+        note: >-
+          Non-IETF "aod" 0.1 onboarding descriptor. Machine-readable account /
+          plan / registration / economics facts; the source of the plans
+          artifact. maturity self-serve, account.required false,
+          agentPolicy allowed.
+      - path: /.well-known/x402-list.spectral.yaml
+        status: 200
+        file: ../rules/x402-list-api-spectral.yaml
+        content_type: text/yaml; charset=utf-8
+        note: >-
+          Served Spectral ruleset referenced from apis.json rules[]. Saved under
+          rules/ rather than well-known/ so it carries the SpectralRules type.
+      - path: /.well-known/openid-configuration
+        status: 404
+      - path: /.well-known/oauth-authorization-server
+        status: 404
+      - path: /.well-known/oauth-protected-resource
+        status: 404
+      - path: /.well-known/ai-plugin.json
+        status: 404
+      - path: /.well-known/agent-card.json
+        status: 404
+      - path: /.well-known/agent.json
+        status: 404
+  - host: mcp.x402-list.com
+    documents:
+      - path: /.well-known/security.txt
+        status: 404
+      - path: /.well-known/oauth-authorization-server
+        status: 404
+        note: >-
+          Expected: the MCP server is unauthenticated for its six read tools and
+          the paid seventh takes an x402 payment signature as a tool argument,
+          not an OAuth token, so there is no protected-resource metadata to serve.
+      - path: /.well-known/oauth-protected-resource
+        status: 404
+      - path: /.well-known/openid-configuration
+        status: 404
+      - path: /.well-known/api-catalog
+        status: 404
+      - path: /.well-known/ai-plugin.json
+        status: 404
+      - path: /.well-known/agent-card.json
+        status: 404
+      - path: /.well-known/agent.json
+        status: 404
+      - path: /.well-known/apis.json
+        status: 404
+probed: '2026-09-02'

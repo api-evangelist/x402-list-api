@@ -1,13 +1,31 @@
 name: x402 List API
-description: >-
-  An open, machine-readable, live-monitored directory of services that accept x402 protocol payments (HTTP 402 Payment
-  Required). Self-described as agent-first, it exposes service listings, uptime metrics, pricing, facilitator settlement
-  data, and rankings as JSON for autonomous agents, aggregators, and integrations.
+description: An open, machine-readable, live-monitored directory of services that accept x402 protocol payments
+  (HTTP 402 Payment Required). Self-described as agent-first, it exposes service listings, uptime metrics, pricing,
+  facilitator settlement data, and rankings as JSON for autonomous agents, aggregators, and integrations.
+image: https://x402-list.com/og-image.png
 url: https://raw.githubusercontent.com/api-evangelist/x402-list-api/refs/heads/main/apis.yml
 created: '2026-09-02'
 modified: '2026-09-02'
 specificationVersion: '0.21'
 tags:
+- x402
+- crypto
+- '402'
+- agentic-payments
+- API directory
+- registry
+- AI agents
+- blockchain
+- developer tools
+- uptime monitoring
+apis:
+- name: x402 List API
+  description: Public REST API (OpenAPI 3.1) providing access to the x402 services directory, uptime, pricing, facilitator
+    volumes, networks, stats, rankings, and change events. Free reads (rate-limited), with x402 pay-per-request
+    metering for bulk usage.
+  humanURL: https://x402-list.com/api
+  baseURL: https://x402-list.com/api/v1
+  tags:
   - x402
   - crypto
   - '402'
@@ -18,41 +36,102 @@ tags:
   - blockchain
   - developer tools
   - uptime monitoring
-apis:
-  - name: x402 List API
-    description: >-
-      Public REST API (OpenAPI 3.1) providing access to the x402 services directory, uptime, pricing, facilitator
-      volumes, networks, stats, rankings, and change events. Free reads (rate-limited), with x402 pay-per-request
-      metering for bulk usage.
-    humanURL: https://x402-list.com/api
-    baseURL: https://x402-list.com/api/v1
-    tags:
-      - x402
-      - crypto
-      - '402'
-      - agentic-payments
-      - API directory
-      - registry
-      - AI agents
-      - blockchain
-      - developer tools
-      - uptime monitoring
-    properties:
-      - type: OpenAPI
-        url: https://x402-list.com/api/v1/openapi.json
-      - type: Documentation
-        url: https://x402-list.com/api
-      - type: LLMsTxt
-        url: https://x402-list.com/llms.txt
-      - type: LLMsTxt
-        url: https://x402-list.com/llms-full.txt
-      - type: MCPServer
-        url: https://mcp.x402-list.com/mcp
+  properties:
+  - type: OpenAPI
+    url: https://x402-list.com/api/v1/openapi.json
+  - type: Documentation
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: https://x402-list.com/llms.txt
+  - type: LLMsTxt
+    url: https://x402-list.com/llms-full.txt
+  - type: MCPServer
+    url: https://mcp.x402-list.com/mcp
+  - type: OpenAPI
+    url: openapi/x402-list-api-openapi.yml
+  - type: DeveloperPortal
+    url: https://x402-list.com/api
+  - type: APIReference
+    url: https://x402-list.com/api
+  - type: GettingStarted
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: llms/x402-list-api-llms.txt
+  - type: MCPServer
+    url: mcp/x402-list-api-mcp.yml
+  - type: ToolCrosswalk
+    url: mcp/x402-list-api-tool-crosswalk.yml
+  - type: Authentication
+    url: authentication/x402-list-api-authentication.yml
+  - type: ErrorCatalog
+    url: errors/x402-list-api-problem-types.yml
+  - type: RateLimits
+    url: rate-limits/x402-list-api-rate-limits.yml
+  - type: Plans
+    url: plans/x402-list-api-plans-pricing.yml
+  - type: Pricing
+    url: https://x402-list.com/api
+  - type: Conventions
+    url: conventions/x402-list-api-conventions.yml
+  - type: DataModel
+    url: data-model/x402-list-api-data-model.yml
+  - type: Lifecycle
+    url: lifecycle/x402-list-api-lifecycle.yml
+  - type: StatusPage
+    url: https://x402-list.com/status
+  - type: ChangeLog
+    url: changelog/x402-list-api-changelog.yml
+  - type: Conformance
+    url: conformance/x402-list-api-conformance.yml
+  - type: Overlay
+    url: overlays/x402-list-api-openapi-overlay.yaml
+  - type: AgentSkill
+    url: skills/_index.yml
+  - type: SpectralRules
+    url: rules/x402-list-api-spectral.yaml
+common:
+- type: VulnerabilityDisclosure
+  url: security/x402-list-api-vulnerability-disclosure.yml
+- type: DomainSecurity
+  url: security/x402-list-api-domain-security.yml
+- type: WellKnown
+  url: well-known/x402-list-api-well-known.yml
+- type: APICatalog
+  url: https://x402-list.com/.well-known/api-catalog
+- type: SecurityTxt
+  url: well-known/x402-list-api-security.txt
+- type: Security
+  url: security/x402-list-api-vulnerability-disclosure.yml
+- type: ContentSignal
+  url: https://x402-list.com/robots.txt
+- type: APIsJSON
+  url: https://x402-list.com/.well-known/apis.json
+- type: Packages
+  url: packages/x402-list-api-packages.yml
+- type: Blog
+  url: https://x402-list.com/blog
+- type: Support
+  url: https://x402-list.com/contact
+- type: TermsOfService
+  url: https://x402-list.com/terms
+- type: PrivacyPolicy
+  url: https://x402-list.com/privacy
+- type: GitHubRepository
+  url: https://github.com/mcccsm/x402-list-mcp
 maintainers:
-  - FN: x402 List
-    url: mailto:info@x402-list.com
+- FN: Cosimo Miccolis
+  org: x402 List
+  email: info@x402-list.com
+  url: https://x402-list.com
+  X-role: operator and data controller (individual, Italy) — as declared in https://x402-list.com/.well-known/apis.json
+    and https://x402-list.com/llms.txt
 generated:
   by: apis.io/add
   model: claude-opus-4-8
   confidence: 97
   at: '2026-09-02T09:37:38.394Z'
+x-enrichment:
+  date: '2026-09-02'
+  status: enriched
+  artifacts_added: 29
+  pass: local-v1

@@ -1,0 +1,80 @@
+generated: '2026-09-02'
+method: searched
+source: >-
+  https://x402-list.com/api (MCP section), https://x402-list.com/llms.txt
+  ("Agent-ready resources"), and the npm registry metadata endpoint
+  https://registry.npmjs.org/x402-list-mcp (HTTP 200), cross-checked against
+  https://api.github.com/repos/mcccsm/x402-list-mcp (HTTP 200).
+description: >-
+  x402 List publishes exactly one first-party package: the local stdio build of
+  its MCP server. It ships NO general-purpose client SDK in any language, and
+  says so deliberately — the API docs read "No JavaScript, no login, no SDK
+  required", the contract is keyless JSON over HTTPS, and the provider points
+  consumers at curl, the OpenAPI document and the hosted MCP endpoint instead.
+  That is a design position rather than a gap, but it is recorded here as zero
+  SDKs so the number is not credited to something it is not.
+official_package_count: 1
+official_sdk_count: 0
+sdk_note: >-
+  x402-list-mcp is an MCP server, not a client SDK for the REST API. No
+  SDKs pointer is emitted for this provider because no client library exists.
+registries_checked:
+  - registry: npm
+    probe: https://registry.npmjs.org/-/v1/search?text=x402-list
+    status: 200
+    result: >-
+      One first-party hit, x402-list-mcp (homepage x402-list.com). Every other
+      x402-* package on npm belongs to the x402 protocol foundation or to
+      Coinbase, not to this provider.
+  - registry: pypi
+    probe: https://pypi.org/pypi/x402-list-mcp/json
+    status: 404
+    result: none
+  - registry: rubygems
+    probe: https://rubygems.org/api/v1/gems/x402-list.json
+    status: 404
+    result: none
+  - registry: crates.io
+    probe: https://crates.io/api/v1/crates/x402-list
+    status: 403
+    result: >-
+      crates.io returns 403 to automated clients; not independently confirmed.
+      No Rust client is referenced anywhere in the provider's own docs.
+  - registry: maven-central
+    probe: https://repo1.maven.org/maven2/com/x402list/
+    status: 404
+    result: none
+  - registry: nuget
+    probe: https://api.nuget.org/v3/registration5-semver1/x402-list/index.json
+    status: 404
+    result: none
+  - registry: packagist
+    probe: https://repo.packagist.org/p2/x402-list/x402-list.json
+    status: 404
+    result: none
+  - registry: pkg.go.dev
+    probe: https://proxy.golang.org/github.com/mcccsm/x402-list-mcp/@v/list
+    status: 200
+    result: >-
+      The Go module proxy answers 200 for the MCP repository path, but the
+      repository is a TypeScript/Node project with no go.mod, so this is a proxy
+      path resolution and not a published Go module. Not counted as a package.
+packages:
+  - language: javascript
+    registry: npm
+    name: x402-list-mcp
+    url: https://www.npmjs.com/package/x402-list-mcp
+    metadata: https://registry.npmjs.org/x402-list-mcp
+    source: https://github.com/mcccsm/x402-list-mcp
+    install: npx -y x402-list-mcp
+    bin: x402-list-mcp
+    official: true
+    kind: mcp-server
+    license: MIT
+    version: 0.5.1
+    published: '2026-09-01'
+    note: >-
+      Local stdio MCP server exposing the same seven tools as the hosted
+      Streamable HTTP endpoint at https://mcp.x402-list.com/mcp. Published the
+      day before this enrichment pass and the repository was pushed the same
+      day, so the package is current with the API it wraps — no decay signal.
