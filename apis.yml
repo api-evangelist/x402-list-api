@@ -90,6 +90,8 @@ apis:
   - type: SpectralRules
     url: rules/x402-list-api-spectral.yaml
 common:
+- type: Website
+  url: https://www.x402-list.com/
 - type: VulnerabilityDisclosure
   url: security/x402-list-api-vulnerability-disclosure.yml
 - type: DomainSecurity
