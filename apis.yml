@@ -9,8 +9,19 @@ modified: '2026-09-02'
 specificationVersion: '0.21'
 tags:
 - x402
+- Crypto
+- 402
+- Agentic Payments
+- API Directory
+- Registry
+- AI Agents
+- Blockchain
+- Developer Tools
+- Uptime Monitoring
+tags_raw:
+- x402
 - crypto
-- '402'
+- 402
 - agentic-payments
 - API directory
 - registry
@@ -19,36 +30,22 @@ tags:
 - developer tools
 - uptime monitoring
 apis:
-- name: x402 List API
-  description: Public REST API (OpenAPI 3.1) providing access to the x402 services directory, uptime, pricing, facilitator
-    volumes, networks, stats, rankings, and change events. Free reads (rate-limited), with x402 pay-per-request
-    metering for bulk usage.
+- aid: x402-list-api:x402-list-api-assess-api
+  name: x402 List API Assess API
+  description: On-demand paid AI assessment of a service shortlist (x402)
   humanURL: https://x402-list.com/api
   baseURL: https://x402-list.com/api/v1
   tags:
-  - x402
-  - crypto
-  - '402'
-  - agentic-payments
-  - API directory
-  - registry
-  - AI agents
-  - blockchain
-  - developer tools
-  - uptime monitoring
+  - Assess
   properties:
   - type: OpenAPI
-    url: https://x402-list.com/api/v1/openapi.json
+    url: openapi/x402-list-api-assess-api-openapi.yml
   - type: Documentation
     url: https://x402-list.com/api
   - type: LLMsTxt
     url: https://x402-list.com/llms.txt
   - type: LLMsTxt
     url: https://x402-list.com/llms-full.txt
-  - type: MCPServer
-    url: https://mcp.x402-list.com/mcp
-  - type: OpenAPI
-    url: openapi/x402-list-api-openapi.yml
   - type: DeveloperPortal
     url: https://x402-list.com/api
   - type: APIReference
@@ -57,8 +54,6 @@ apis:
     url: https://x402-list.com/api
   - type: LLMsTxt
     url: llms/x402-list-api-llms.txt
-  - type: MCPServer
-    url: mcp/x402-list-api-mcp.yml
   - type: ToolCrosswalk
     url: mcp/x402-list-api-tool-crosswalk.yml
   - type: Authentication
@@ -83,13 +78,519 @@ apis:
     url: changelog/x402-list-api-changelog.yml
   - type: Conformance
     url: conformance/x402-list-api-conformance.yml
-  - type: Overlay
-    url: overlays/x402-list-api-openapi-overlay.yaml
-  - type: AgentSkill
-    url: skills/_index.yml
+  - type: SpectralRules
+    url: rules/x402-list-api-spectral.yaml
+- aid: x402-list-api:x402-list-api-changes-api
+  name: x402 List API Changes API
+  description: >-
+    Change events detected on the live x402 wire: payTo rotations, price moves, and schema changes
+  humanURL: https://x402-list.com/api
+  baseURL: https://x402-list.com/api/v1
+  tags:
+  - Changes
+  properties:
+  - type: OpenAPI
+    url: openapi/x402-list-api-changes-api-openapi.yml
+  - type: Documentation
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: https://x402-list.com/llms.txt
+  - type: LLMsTxt
+    url: https://x402-list.com/llms-full.txt
+  - type: DeveloperPortal
+    url: https://x402-list.com/api
+  - type: APIReference
+    url: https://x402-list.com/api
+  - type: GettingStarted
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: llms/x402-list-api-llms.txt
+  - type: ToolCrosswalk
+    url: mcp/x402-list-api-tool-crosswalk.yml
+  - type: Authentication
+    url: authentication/x402-list-api-authentication.yml
+  - type: ErrorCatalog
+    url: errors/x402-list-api-problem-types.yml
+  - type: RateLimits
+    url: rate-limits/x402-list-api-rate-limits.yml
+  - type: Plans
+    url: plans/x402-list-api-plans-pricing.yml
+  - type: Pricing
+    url: https://x402-list.com/api
+  - type: Conventions
+    url: conventions/x402-list-api-conventions.yml
+  - type: DataModel
+    url: data-model/x402-list-api-data-model.yml
+  - type: Lifecycle
+    url: lifecycle/x402-list-api-lifecycle.yml
+  - type: StatusPage
+    url: https://x402-list.com/status
+  - type: ChangeLog
+    url: changelog/x402-list-api-changelog.yml
+  - type: Conformance
+    url: conformance/x402-list-api-conformance.yml
+  - type: SpectralRules
+    url: rules/x402-list-api-spectral.yaml
+- aid: x402-list-api:x402-list-api-checks-api
+  name: x402 List API Checks API
+  description: Access monitoring check logs - the raw heartbeat of the x402 ecosystem
+  humanURL: https://x402-list.com/api
+  baseURL: https://x402-list.com/api/v1
+  tags:
+  - Checks
+  properties:
+  - type: OpenAPI
+    url: openapi/x402-list-api-checks-api-openapi.yml
+  - type: Documentation
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: https://x402-list.com/llms.txt
+  - type: LLMsTxt
+    url: https://x402-list.com/llms-full.txt
+  - type: DeveloperPortal
+    url: https://x402-list.com/api
+  - type: APIReference
+    url: https://x402-list.com/api
+  - type: GettingStarted
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: llms/x402-list-api-llms.txt
+  - type: ToolCrosswalk
+    url: mcp/x402-list-api-tool-crosswalk.yml
+  - type: Authentication
+    url: authentication/x402-list-api-authentication.yml
+  - type: ErrorCatalog
+    url: errors/x402-list-api-problem-types.yml
+  - type: RateLimits
+    url: rate-limits/x402-list-api-rate-limits.yml
+  - type: Plans
+    url: plans/x402-list-api-plans-pricing.yml
+  - type: Pricing
+    url: https://x402-list.com/api
+  - type: Conventions
+    url: conventions/x402-list-api-conventions.yml
+  - type: DataModel
+    url: data-model/x402-list-api-data-model.yml
+  - type: Lifecycle
+    url: lifecycle/x402-list-api-lifecycle.yml
+  - type: StatusPage
+    url: https://x402-list.com/status
+  - type: ChangeLog
+    url: changelog/x402-list-api-changelog.yml
+  - type: Conformance
+    url: conformance/x402-list-api-conformance.yml
+  - type: SpectralRules
+    url: rules/x402-list-api-spectral.yaml
+- aid: x402-list-api:x402-list-api-facilitators-api
+  name: x402 List API Facilitators API
+  description: >-
+    Independently on-chain-verified USDC settlement volume per x402 facilitator (multi-chain)
+  humanURL: https://x402-list.com/api
+  baseURL: https://x402-list.com/api/v1
+  tags:
+  - Facilitators
+  properties:
+  - type: OpenAPI
+    url: openapi/x402-list-api-facilitators-api-openapi.yml
+  - type: Documentation
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: https://x402-list.com/llms.txt
+  - type: LLMsTxt
+    url: https://x402-list.com/llms-full.txt
+  - type: DeveloperPortal
+    url: https://x402-list.com/api
+  - type: APIReference
+    url: https://x402-list.com/api
+  - type: GettingStarted
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: llms/x402-list-api-llms.txt
+  - type: ToolCrosswalk
+    url: mcp/x402-list-api-tool-crosswalk.yml
+  - type: Authentication
+    url: authentication/x402-list-api-authentication.yml
+  - type: ErrorCatalog
+    url: errors/x402-list-api-problem-types.yml
+  - type: RateLimits
+    url: rate-limits/x402-list-api-rate-limits.yml
+  - type: Plans
+    url: plans/x402-list-api-plans-pricing.yml
+  - type: Pricing
+    url: https://x402-list.com/api
+  - type: Conventions
+    url: conventions/x402-list-api-conventions.yml
+  - type: DataModel
+    url: data-model/x402-list-api-data-model.yml
+  - type: Lifecycle
+    url: lifecycle/x402-list-api-lifecycle.yml
+  - type: StatusPage
+    url: https://x402-list.com/status
+  - type: ChangeLog
+    url: changelog/x402-list-api-changelog.yml
+  - type: Conformance
+    url: conformance/x402-list-api-conformance.yml
+  - type: SpectralRules
+    url: rules/x402-list-api-spectral.yaml
+- aid: x402-list-api:x402-list-api-recommender-api
+  name: x402 List API Recommender API
+  description: Rank the best x402 service(s) for a need (the public HTTP recommender)
+  humanURL: https://x402-list.com/api
+  baseURL: https://x402-list.com/api/v1
+  tags:
+  - Recommender
+  properties:
+  - type: OpenAPI
+    url: openapi/x402-list-api-recommender-api-openapi.yml
+  - type: Documentation
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: https://x402-list.com/llms.txt
+  - type: LLMsTxt
+    url: https://x402-list.com/llms-full.txt
+  - type: DeveloperPortal
+    url: https://x402-list.com/api
+  - type: APIReference
+    url: https://x402-list.com/api
+  - type: GettingStarted
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: llms/x402-list-api-llms.txt
+  - type: ToolCrosswalk
+    url: mcp/x402-list-api-tool-crosswalk.yml
+  - type: Authentication
+    url: authentication/x402-list-api-authentication.yml
+  - type: ErrorCatalog
+    url: errors/x402-list-api-problem-types.yml
+  - type: RateLimits
+    url: rate-limits/x402-list-api-rate-limits.yml
+  - type: Plans
+    url: plans/x402-list-api-plans-pricing.yml
+  - type: Pricing
+    url: https://x402-list.com/api
+  - type: Conventions
+    url: conventions/x402-list-api-conventions.yml
+  - type: DataModel
+    url: data-model/x402-list-api-data-model.yml
+  - type: Lifecycle
+    url: lifecycle/x402-list-api-lifecycle.yml
+  - type: StatusPage
+    url: https://x402-list.com/status
+  - type: ChangeLog
+    url: changelog/x402-list-api-changelog.yml
+  - type: Conformance
+    url: conformance/x402-list-api-conformance.yml
+  - type: SpectralRules
+    url: rules/x402-list-api-spectral.yaml
+- aid: x402-list-api:x402-list-api-reference-api
+  name: x402 List API Reference API
+  description: 'Reference data: supported networks, categories, and service tags'
+  humanURL: https://x402-list.com/api
+  baseURL: https://x402-list.com/api/v1
+  tags:
+  - Reference
+  properties:
+  - type: OpenAPI
+    url: openapi/x402-list-api-reference-api-openapi.yml
+  - type: Documentation
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: https://x402-list.com/llms.txt
+  - type: LLMsTxt
+    url: https://x402-list.com/llms-full.txt
+  - type: DeveloperPortal
+    url: https://x402-list.com/api
+  - type: APIReference
+    url: https://x402-list.com/api
+  - type: GettingStarted
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: llms/x402-list-api-llms.txt
+  - type: ToolCrosswalk
+    url: mcp/x402-list-api-tool-crosswalk.yml
+  - type: Authentication
+    url: authentication/x402-list-api-authentication.yml
+  - type: ErrorCatalog
+    url: errors/x402-list-api-problem-types.yml
+  - type: RateLimits
+    url: rate-limits/x402-list-api-rate-limits.yml
+  - type: Plans
+    url: plans/x402-list-api-plans-pricing.yml
+  - type: Pricing
+    url: https://x402-list.com/api
+  - type: Conventions
+    url: conventions/x402-list-api-conventions.yml
+  - type: DataModel
+    url: data-model/x402-list-api-data-model.yml
+  - type: Lifecycle
+    url: lifecycle/x402-list-api-lifecycle.yml
+  - type: StatusPage
+    url: https://x402-list.com/status
+  - type: ChangeLog
+    url: changelog/x402-list-api-changelog.yml
+  - type: Conformance
+    url: conformance/x402-list-api-conformance.yml
+  - type: SpectralRules
+    url: rules/x402-list-api-spectral.yaml
+- aid: x402-list-api:x402-list-api-services-api
+  name: x402 List API Services API
+  description: Browse and query x402 services, their endpoints, uptime, and pricing
+  humanURL: https://x402-list.com/api
+  baseURL: https://x402-list.com/api/v1
+  tags:
+  - Services
+  properties:
+  - type: OpenAPI
+    url: openapi/x402-list-api-services-api-openapi.yml
+  - type: Documentation
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: https://x402-list.com/llms.txt
+  - type: LLMsTxt
+    url: https://x402-list.com/llms-full.txt
+  - type: DeveloperPortal
+    url: https://x402-list.com/api
+  - type: APIReference
+    url: https://x402-list.com/api
+  - type: GettingStarted
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: llms/x402-list-api-llms.txt
+  - type: ToolCrosswalk
+    url: mcp/x402-list-api-tool-crosswalk.yml
+  - type: Authentication
+    url: authentication/x402-list-api-authentication.yml
+  - type: ErrorCatalog
+    url: errors/x402-list-api-problem-types.yml
+  - type: RateLimits
+    url: rate-limits/x402-list-api-rate-limits.yml
+  - type: Plans
+    url: plans/x402-list-api-plans-pricing.yml
+  - type: Pricing
+    url: https://x402-list.com/api
+  - type: Conventions
+    url: conventions/x402-list-api-conventions.yml
+  - type: DataModel
+    url: data-model/x402-list-api-data-model.yml
+  - type: Lifecycle
+    url: lifecycle/x402-list-api-lifecycle.yml
+  - type: StatusPage
+    url: https://x402-list.com/status
+  - type: ChangeLog
+    url: changelog/x402-list-api-changelog.yml
+  - type: Conformance
+    url: conformance/x402-list-api-conformance.yml
+  - type: SpectralRules
+    url: rules/x402-list-api-spectral.yaml
+- aid: x402-list-api:x402-list-api-stats-api
+  name: x402 List API Stats API
+  description: Aggregate statistics about the x402 ecosystem
+  humanURL: https://x402-list.com/api
+  baseURL: https://x402-list.com/api/v1
+  tags:
+  - Stats
+  properties:
+  - type: OpenAPI
+    url: openapi/x402-list-api-stats-api-openapi.yml
+  - type: Documentation
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: https://x402-list.com/llms.txt
+  - type: LLMsTxt
+    url: https://x402-list.com/llms-full.txt
+  - type: DeveloperPortal
+    url: https://x402-list.com/api
+  - type: APIReference
+    url: https://x402-list.com/api
+  - type: GettingStarted
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: llms/x402-list-api-llms.txt
+  - type: ToolCrosswalk
+    url: mcp/x402-list-api-tool-crosswalk.yml
+  - type: Authentication
+    url: authentication/x402-list-api-authentication.yml
+  - type: ErrorCatalog
+    url: errors/x402-list-api-problem-types.yml
+  - type: RateLimits
+    url: rate-limits/x402-list-api-rate-limits.yml
+  - type: Plans
+    url: plans/x402-list-api-plans-pricing.yml
+  - type: Pricing
+    url: https://x402-list.com/api
+  - type: Conventions
+    url: conventions/x402-list-api-conventions.yml
+  - type: DataModel
+    url: data-model/x402-list-api-data-model.yml
+  - type: Lifecycle
+    url: lifecycle/x402-list-api-lifecycle.yml
+  - type: StatusPage
+    url: https://x402-list.com/status
+  - type: ChangeLog
+    url: changelog/x402-list-api-changelog.yml
+  - type: Conformance
+    url: conformance/x402-list-api-conformance.yml
+  - type: SpectralRules
+    url: rules/x402-list-api-spectral.yaml
+- aid: x402-list-api:x402-list-api-status-api
+  name: x402 List API Status API
+  description: Get a quick health overview of all monitored services
+  humanURL: https://x402-list.com/api
+  baseURL: https://x402-list.com/api/v1
+  tags:
+  - Status
+  properties:
+  - type: OpenAPI
+    url: openapi/x402-list-api-status-api-openapi.yml
+  - type: Documentation
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: https://x402-list.com/llms.txt
+  - type: LLMsTxt
+    url: https://x402-list.com/llms-full.txt
+  - type: DeveloperPortal
+    url: https://x402-list.com/api
+  - type: APIReference
+    url: https://x402-list.com/api
+  - type: GettingStarted
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: llms/x402-list-api-llms.txt
+  - type: ToolCrosswalk
+    url: mcp/x402-list-api-tool-crosswalk.yml
+  - type: Authentication
+    url: authentication/x402-list-api-authentication.yml
+  - type: ErrorCatalog
+    url: errors/x402-list-api-problem-types.yml
+  - type: RateLimits
+    url: rate-limits/x402-list-api-rate-limits.yml
+  - type: Plans
+    url: plans/x402-list-api-plans-pricing.yml
+  - type: Pricing
+    url: https://x402-list.com/api
+  - type: Conventions
+    url: conventions/x402-list-api-conventions.yml
+  - type: DataModel
+    url: data-model/x402-list-api-data-model.yml
+  - type: Lifecycle
+    url: lifecycle/x402-list-api-lifecycle.yml
+  - type: StatusPage
+    url: https://x402-list.com/status
+  - type: ChangeLog
+    url: changelog/x402-list-api-changelog.yml
+  - type: Conformance
+    url: conformance/x402-list-api-conformance.yml
+  - type: SpectralRules
+    url: rules/x402-list-api-spectral.yaml
+- aid: x402-list-api:x402-list-api-submissions-api
+  name: x402 List API Submissions API
+  description: Submit new x402 services or facilitators for review and listing
+  humanURL: https://x402-list.com/api
+  baseURL: https://x402-list.com/api/v1
+  tags:
+  - Submissions
+  properties:
+  - type: OpenAPI
+    url: openapi/x402-list-api-submissions-api-openapi.yml
+  - type: Documentation
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: https://x402-list.com/llms.txt
+  - type: LLMsTxt
+    url: https://x402-list.com/llms-full.txt
+  - type: DeveloperPortal
+    url: https://x402-list.com/api
+  - type: APIReference
+    url: https://x402-list.com/api
+  - type: GettingStarted
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: llms/x402-list-api-llms.txt
+  - type: ToolCrosswalk
+    url: mcp/x402-list-api-tool-crosswalk.yml
+  - type: Authentication
+    url: authentication/x402-list-api-authentication.yml
+  - type: ErrorCatalog
+    url: errors/x402-list-api-problem-types.yml
+  - type: RateLimits
+    url: rate-limits/x402-list-api-rate-limits.yml
+  - type: Plans
+    url: plans/x402-list-api-plans-pricing.yml
+  - type: Pricing
+    url: https://x402-list.com/api
+  - type: Conventions
+    url: conventions/x402-list-api-conventions.yml
+  - type: DataModel
+    url: data-model/x402-list-api-data-model.yml
+  - type: Lifecycle
+    url: lifecycle/x402-list-api-lifecycle.yml
+  - type: StatusPage
+    url: https://x402-list.com/status
+  - type: ChangeLog
+    url: changelog/x402-list-api-changelog.yml
+  - type: Conformance
+    url: conformance/x402-list-api-conformance.yml
+  - type: SpectralRules
+    url: rules/x402-list-api-spectral.yaml
+- aid: x402-list-api:x402-list-api-suggestions-api
+  name: x402 List API Suggestions API
+  description: Post paid suggestions for the directory (feedback in x402)
+  humanURL: https://x402-list.com/api
+  baseURL: https://x402-list.com/api/v1
+  tags:
+  - Suggestions
+  properties:
+  - type: OpenAPI
+    url: openapi/x402-list-api-suggestions-api-openapi.yml
+  - type: Documentation
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: https://x402-list.com/llms.txt
+  - type: LLMsTxt
+    url: https://x402-list.com/llms-full.txt
+  - type: DeveloperPortal
+    url: https://x402-list.com/api
+  - type: APIReference
+    url: https://x402-list.com/api
+  - type: GettingStarted
+    url: https://x402-list.com/api
+  - type: LLMsTxt
+    url: llms/x402-list-api-llms.txt
+  - type: ToolCrosswalk
+    url: mcp/x402-list-api-tool-crosswalk.yml
+  - type: Authentication
+    url: authentication/x402-list-api-authentication.yml
+  - type: ErrorCatalog
+    url: errors/x402-list-api-problem-types.yml
+  - type: RateLimits
+    url: rate-limits/x402-list-api-rate-limits.yml
+  - type: Plans
+    url: plans/x402-list-api-plans-pricing.yml
+  - type: Pricing
+    url: https://x402-list.com/api
+  - type: Conventions
+    url: conventions/x402-list-api-conventions.yml
+  - type: DataModel
+    url: data-model/x402-list-api-data-model.yml
+  - type: Lifecycle
+    url: lifecycle/x402-list-api-lifecycle.yml
+  - type: StatusPage
+    url: https://x402-list.com/status
+  - type: ChangeLog
+    url: changelog/x402-list-api-changelog.yml
+  - type: Conformance
+    url: conformance/x402-list-api-conformance.yml
   - type: SpectralRules
     url: rules/x402-list-api-spectral.yaml
 common:
+- type: MCPServer
+  url: https://mcp.x402-list.com/mcp
+- type: MCPServer
+  url: mcp/x402-list-api-mcp.yml
+- type: Overlay
+  url: overlays/x402-list-api-openapi-overlay.yaml
+- type: AgentSkill
+  url: skills/_index.yml
 - type: Website
   url: https://www.x402-list.com/
 - type: VulnerabilityDisclosure
