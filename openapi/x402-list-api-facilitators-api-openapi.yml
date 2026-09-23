@@ -1,0 +1,828 @@
+openapi: 3.2.0
+info:
+  title: x402 List Facilitators API
+  version: 1.0.0
+  description: Public REST API for x402-list.com - the directory of all services using the x402 protocol (HTTP 402 Payment Required).
+  contact:
+    name: x402 List
+    url: https://x402-list.com
+    email: info@x402-list.com
+  termsOfService: https://x402-list.com/terms
+  license:
+    name: MIT
+  x-data-license: CC-BY-4.0
+servers:
+- url: https://x402-list.com/api/v1
+  description: Production
+tags:
+- name: Facilitators
+  description: Independently on-chain-verified USDC settlement volume per x402 facilitator (multi-chain)
+paths:
+  /facilitators:
+    get:
+      operationId: listFacilitators
+      summary: List x402 facilitators by on-chain verified volume
+      description: 'Returns x402 facilitators ranked by their independently on-chain-verified USDC settlement volume across all measured chains. Volume is measured directly from blockchain transactions (settler-address attribution, EIP-3009 transferWithAuthorization to USDC). It is NOT self-reported or dashboard-quoted. For USDC, USD volume equals token volume 1:1. Each row carries 24h/7d/30d volume + settlement counts, the last on-chain activity timestamp, and the number of settler EOAs. Pass include=timeseries to also receive a per-facilitator daily volume series for charting, and/or include=chains for the per-(network,token) breakdown. Combine them comma-separated: include=timeseries,chains.'
+      tags:
+      - Facilitators
+      parameters:
+      - name: timeframe
+        in: query
+        schema:
+          type: string
+          enum:
+          - 24h
+          - 7d
+          - 30d
+          - all
+          default: 7d
+        description: Window that drives the sort order (volume descending); 'all' = all-time
+      - name: include
+        in: query
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - timeseries
+            - chains
+        style: form
+        explode: false
+        description: 'Comma-separated optional embeds: "timeseries" (daily volume series per facilitator) and/or "chains" (per-(network,token) breakdown). Example: include=timeseries,chains'
+      - name: days
+        in: query
+        schema:
+          type: integer
+          default: 30
+          minimum: 1
+          maximum: 90
+        description: Length of the embedded timeseries window (only with include=timeseries)
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+          minimum: 1
+        description: Page number
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          default: 25
+          minimum: 1
+          maximum: 100
+        description: Results per page
+      responses:
+        '200':
+          description: Paginated list of facilitators with on-chain volume
+          headers:
+            X-Meter-Remaining:
+              $ref: '#/components/headers/MeterRemaining'
+            X-Meter-Reset:
+              $ref: '#/components/headers/MeterReset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FacilitatorListItem'
+                  meta:
+                    $ref: '#/components/schemas/FacilitatorPaginationMeta'
+                  provenance:
+                    $ref: '#/components/schemas/Provenance'
+              example:
+                data:
+                - facilitator_id: coinbase
+                  name: Coinbase
+                  website_url: https://docs.cdp.coinbase.com/x402
+                  volume_usd_24h: 41250.5
+                  volume_usd_7d: 289110.75
+                  volume_usd_30d: 1203400
+                  volume_usd_all: 8841200
+                  tx_count_24h: 8123
+                  tx_count_7d: 56720
+                  tx_count_30d: 241990
+                  tx_count_all: 1894220
+                  last_activity_at: '2026-06-16T09:00:00Z'
+                  first_activity_at: '2026-01-01T00:00:00Z'
+                  settler_count: 12
+                  verification: on-chain
+                meta:
+                  total: 3
+                  page: 1
+                  per_page: 25
+                  total_pages: 1
+                  timeframe: 7d
+        '402':
+          $ref: '#/components/responses/MeteredPaymentRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /facilitators/{id}:
+    get:
+      operationId: getFacilitator
+      summary: Get a single facilitator detail
+      description: 'Full detail for one facilitator (TRENO A D5): the list-row volume and settlement figures plus the per-(network, token) chains breakdown (now carrying first_activity_at), the on-chain settler EOAs, per-chain distinct buyers, average USD per settlement, a 7-day-vs-previous-7-day trend, the daily volume series (period=all returns the full history, matching the services), and the listed_services bridge (which directory services settle on-chain via this facilitator). An unknown id is matched case-insensitively and 301-redirected to the canonical id before a 404, since the stored id drives on-chain volume attribution byte-exact. avg_settlement_usd_all and avg_settlement_usd_30d are volume over settlement count and are null (never a fabricated 0) when there is nothing to average; trend_7d_vs_prev_7d is null when the previous window is empty. The buyers total is a declared UPPER BOUND: distinct buyers are counted per chain and never de-duplicated across chains or tokens, so prefer the per-chain figures.'
+      tags:
+      - Facilitators
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Facilitator id (case-insensitive; a non-canonical casing 301s to the canonical id)
+        example: coinbase
+      - name: period
+        in: query
+        schema:
+          type: string
+          enum:
+          - 30d
+          - all
+          default: 30d
+        description: Window for the daily series; "all" returns the full-history series (matches the services period=all).
+      - name: series_by
+        in: query
+        schema:
+          type: string
+          enum:
+          - total
+          - chain
+          default: total
+        description: 'Shape of the series: per-day totals ("total") or per-(day, network) ("chain").'
+      responses:
+        '200':
+          description: Single facilitator detail node
+          headers:
+            X-Meter-Remaining:
+              $ref: '#/components/headers/MeterRemaining'
+            X-Meter-Reset:
+              $ref: '#/components/headers/MeterReset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FacilitatorDetail'
+                  provenance:
+                    $ref: '#/components/schemas/Provenance'
+              example:
+                data:
+                  facilitator_id: coinbase
+                  name: Coinbase
+                  website_url: https://docs.cdp.coinbase.com/x402
+                  volume_usd_24h: 41250.5
+                  volume_usd_7d: 289110.75
+                  volume_usd_30d: 1203400
+                  volume_usd_all: 8841200
+                  tx_count_24h: 8123
+                  tx_count_7d: 56720
+                  tx_count_30d: 241990
+                  tx_count_all: 1894220
+                  last_activity_at: '2026-06-16T09:00:00Z'
+                  settler_count: 12
+                  verification: on-chain
+                  avg_settlement_usd_all: 4.67
+                  avg_settlement_usd_30d: 4.97
+                  trend_7d_vs_prev_7d: 1.12
+                  buyers:
+                    by_chain:
+                    - network: base
+                      network_caip2: eip155:8453
+                      unique_buyers_30d: 3120
+                    - network: solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp
+                      network_caip2: solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp
+                      unique_buyers_30d: 940
+                    total_upper_bound_30d: 4060
+                    caveat: Distinct buyers are counted per chain from the daily snapshots. A buyer active on more than one day is counted once per active day, and buyers on different chains or tokens are not de-duplicated, so total_upper_bound_30d is an upper bound, not an exact head count. Prefer the per-chain figures.
+                  chains:
+                  - network: base
+                    network_caip2: eip155:8453
+                    token_address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
+                    token_address_norm: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+                    asset_name: USDC
+                    volume_usd_24h: 41250.5
+                    volume_usd_7d: 289110.75
+                    volume_usd_30d: 1203400
+                    volume_usd_all: 8841200
+                    tx_count_all: 1894220
+                    first_activity_at: '2026-04-05T00:00:00Z'
+                    last_activity_at: '2026-06-16T09:00:00Z'
+                    verification: on-chain
+                  settlers:
+                  - address: '0x2a9e8fa63c9d4e1b7a5c6f8d0e2b4a6c8d0f1a3b'
+                    network: base
+                    network_caip2: eip155:8453
+                    source: x402scan
+                    last_seen_at: '2026-06-16T09:00:00Z'
+                    token_name: USDC
+                    token_decimals: 6
+                    enabled: true
+                  listed_services:
+                    all_time_count: 7
+                    active_count_30d: 4
+                    top:
+                    - slug: netintel
+                      name: NetIntel
+                      status: online
+                      volume_usd_30d: 842.15
+                      tx_count_30d: 210
+                    caveat: Services listed in this directory that have settled on-chain via this facilitator. Volume is the service 30d figure over its payout mapping (a conservative floor, USDC via measured facilitators only); services that share a payout address are counted at the address level here. The all-time count is null until the hourly precompute records it.
+                  series:
+                  - date: '2026-06-15'
+                    volume_usd: 40120.4
+                    tx_count: 8010
+                  - date: '2026-06-16'
+                    volume_usd: 41250.5
+                    tx_count: 8123
+                  method: Settlement volume is measured directly on-chain by settler-address attribution (USDC), never self-reported.
+                  caveat: A measured floor, not an ecosystem total. Average USD per settlement is volume divided by settlement count over the window (null when there are no settlements), and the trend compares the last 7 days to the previous 7. The 24h figures are today so far in UTC, not a trailing 24 hours.
+        '402':
+          $ref: '#/components/responses/MeteredPaymentRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  schemas:
+    FacilitatorListItem:
+      type: object
+      description: A facilitator with independently on-chain-verified USDC volume across all measured chains. For USDC, USD volume equals token volume 1:1.
+      properties:
+        facilitator_id:
+          type: string
+          description: Stable facilitator identifier
+          example: coinbase
+        name:
+          type: string
+          example: Coinbase
+        website_url:
+          type:
+          - string
+          - 'null'
+          format: uri
+        volume_usd_24h:
+          type: number
+          description: 'On-chain USDC volume for today (UTC) so far, not a trailing 24-hour window: it resets at 00:00 UTC (USD)'
+        volume_usd_7d:
+          type: number
+          description: On-chain USDC volume over the trailing 7 days (USD)
+        volume_usd_30d:
+          type: number
+          description: On-chain USDC volume over the trailing 30 days (USD)
+        volume_usd_all:
+          type: number
+          description: On-chain USDC volume over all recorded history (USD; from Jan 2026 when the history backfill is enabled)
+        tx_count_24h:
+          type: integer
+          description: 'Settlement transaction count for today (UTC) so far, not a trailing 24-hour window: it resets at 00:00 UTC'
+        tx_count_7d:
+          type: integer
+          description: Settlement transaction count over the trailing 7 days
+        tx_count_30d:
+          type: integer
+          description: Settlement transaction count over the trailing 30 days
+        tx_count_all:
+          type: integer
+          description: Settlement transaction count over all recorded history (from Jan 2026 when the history backfill is enabled)
+        last_activity_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Most recent on-chain settlement activity
+        first_activity_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Earliest measured settlement day (start of our measurement window, not the facilitator first on-chain activity, which can predate it by months); extends back as history is backfilled. null when never measured. Use it to tell a facilitator whose all-time spans its whole life from one whose window is only weeks deep.
+        settler_count:
+          type: integer
+          description: Number of enabled on-chain settler addresses (EOAs)
+        verification:
+          type: string
+          enum:
+          - on-chain
+          - listed
+          description: '"on-chain" when settlement volume has been measured directly from blockchain transactions (volume_usd_all > 0); "listed" when the facilitator is catalogued but no volume has been measured yet'
+        timeseries:
+          type: array
+          description: Daily volume series (oldest first); present only when include=timeseries
+          items:
+            $ref: '#/components/schemas/FacilitatorTimeseriesPoint'
+        chains:
+          type: array
+          description: Per-(network,token) volume breakdown; present only when include=chains
+          items:
+            $ref: '#/components/schemas/FacilitatorChainBreakdown'
+    PaymentRequirements:
+      type: object
+      description: A single x402 payment option (one element of accepts[]).
+      properties:
+        scheme:
+          type: string
+          enum:
+          - exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        amount:
+          type: string
+          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
+          example: '500000'
+        payTo:
+          type: string
+          description: Receiving wallet address
+        maxTimeoutSeconds:
+          type: integer
+          example: 300
+        extra:
+          type: object
+          description: EIP-712 signing domain parameters
+          properties:
+            name:
+              type: string
+              example: USD Coin
+            version:
+              type: string
+              example: '2'
+    FacilitatorTimeseriesPoint:
+      type: object
+      description: One day of a facilitator on-chain volume series
+      properties:
+        date:
+          type: string
+          description: UTC day, YYYY-MM-DD
+          example: '2026-06-15'
+        volume_usd:
+          type: number
+          description: On-chain USDC volume that day (USD)
+        tx_count:
+          type: integer
+          description: Settlement transaction count that day
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+    FacilitatorBuyers:
+      type: object
+      description: 'Per-chain distinct on-chain buyers (E3). total_upper_bound_30d is a declared UPPER BOUND: buyers on different chains or tokens are not de-duplicated, and each per-chain figure sums daily distinct counts. Prefer the per-chain figures.'
+      properties:
+        by_chain:
+          type: array
+          items:
+            type: object
+            properties:
+              network:
+                type: string
+                description: Chain identifier as configured
+              network_caip2:
+                type:
+                - string
+                - 'null'
+                description: Canonical CAIP-2 identifier; null when the raw chain id is not recognized
+              unique_buyers_30d:
+                type: integer
+                description: Distinct buyers on this chain over the trailing 30 days (sum of daily distinct counts)
+        total_upper_bound_30d:
+          type: integer
+          description: 'Straight sum of the per-chain figures: a strict upper bound, not an exact head count'
+        caveat:
+          type: string
+          description: Mandatory in-band note declaring why the total is an upper bound
+    FacilitatorPaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of facilitators
+        page:
+          type: integer
+          description: Current page number
+        per_page:
+          type: integer
+          description: Results per page
+        total_pages:
+          type: integer
+          description: Total number of pages
+        timeframe:
+          type: string
+          enum:
+          - 24h
+          - 7d
+          - 30d
+          - all
+          description: Window used to sort the results
+    FacilitatorDetailChain:
+      type: object
+      description: A facilitator volume on one (network, token), as served on the detail node. Same shape as FacilitatorChainBreakdown plus first_activity_at (C3).
+      properties:
+        network:
+          type: string
+          description: Chain identifier as configured ('base', full Solana genesis hash, or eip155:*); prefer network_caip2 for joins.
+          example: base
+        network_caip2:
+          type:
+          - string
+          - 'null'
+          description: Canonical CAIP-2 identifier; null when the raw chain id is not recognized
+          example: eip155:8453
+        token_address:
+          type:
+          - string
+          - 'null'
+          description: Settlement token contract/mint address on that chain
+        token_address_norm:
+          type:
+          - string
+          - 'null'
+          description: Normalized settlement token address (EVM lowercased, non-EVM kept as-is); null = unknown
+        asset_name:
+          type:
+          - string
+          - 'null'
+          description: Human asset label (e.g. "USDC")
+        volume_usd_24h:
+          type: number
+          description: On-chain volume for today (UTC) so far (USD)
+        volume_usd_7d:
+          type: number
+          description: On-chain volume over the trailing 7 days (USD)
+        volume_usd_30d:
+          type: number
+          description: On-chain volume over the trailing 30 days (USD)
+        volume_usd_all:
+          type: number
+          description: On-chain volume over all recorded history (USD)
+        tx_count_all:
+          type: integer
+          description: Settlement count over all recorded history
+        first_activity_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: First on-chain settlement activity on this chain (C3); null when never seen
+        last_activity_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Most recent on-chain settlement activity on this chain
+        verification:
+          type: string
+          enum:
+          - on-chain
+          - listed
+          description: '"on-chain" if measured volume > 0 on this chain, else "listed"'
+    FacilitatorChainBreakdown:
+      type: object
+      description: A facilitator volume on one (network, token). "on-chain" rows carry measured volume; "listed" rows are declared-but-not-yet-measured chains.
+      properties:
+        network:
+          type: string
+          description: Chain identifier as configured ('base', full-length 'solana:5eykt…' genesis hash, or CAIP-2 eip155:*); kept raw for backwards compatibility. Prefer network_caip2 for joins.
+          example: base
+        network_caip2:
+          type:
+          - string
+          - 'null'
+          description: Canonical CAIP-2 identifier for cross-endpoint joins (matches /networks .caip2 and service pricing .network_caip2); null when the raw chain identifier is not recognized
+          example: eip155:8453
+        token_address:
+          type:
+          - string
+          - 'null'
+          description: Settlement token contract/mint address on that chain
+        token_address_norm:
+          type:
+          - string
+          - 'null'
+          description: 'Normalized settlement token address for cross-endpoint joins: EVM addresses lowercased, non-EVM (e.g. Solana mints) kept as-is; null = unknown'
+        asset_name:
+          type:
+          - string
+          - 'null'
+          description: Human asset label (e.g. "USDC")
+        volume_usd_24h:
+          type: number
+          description: 'On-chain volume for today (UTC) so far, not a trailing 24-hour window: it resets at 00:00 UTC (USD)'
+        volume_usd_7d:
+          type: number
+          description: On-chain volume over the trailing 7 days (USD)
+        volume_usd_30d:
+          type: number
+          description: On-chain volume over the trailing 30 days (USD)
+        volume_usd_all:
+          type: number
+          description: On-chain volume over all recorded history (USD)
+        tx_count_all:
+          type: integer
+          description: Settlement transaction count over all recorded history
+        last_activity_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Most recent on-chain settlement activity on this chain
+        verification:
+          type: string
+          enum:
+          - on-chain
+          - listed
+          description: '"on-chain" if measured volume > 0 on this chain, else "listed"'
+    FacilitatorListedServices:
+      type: object
+      description: 'The facilitator -> listed-services bridge (D2 + C1): which directory services have settled on-chain via this facilitator. Volume is the service 30d figure over its payout mapping (a conservative floor); a service sharing a payout address is counted at the address level here (not re-divided pro-quota, since the split is per-service, not per-facilitator).'
+      properties:
+        all_time_count:
+          type:
+          - integer
+          - 'null'
+          description: Distinct listed services that settled via this facilitator over all history; null until the hourly precompute records it (never a fabricated 0).
+        active_count_30d:
+          type: integer
+          description: Listed services with an attributed settlement via this facilitator over the trailing 30 days
+        top:
+          type: array
+          description: Top listed services by 30d volume (up to 10), link-able by slug
+          items:
+            type: object
+            properties:
+              slug:
+                type: string
+              name:
+                type: string
+              status:
+                type: string
+                enum:
+                - online
+                - degraded
+                - offline
+                - unknown
+              volume_usd_30d:
+                type: number
+                description: Service 30d settlement volume over its payout mapping (USD)
+              tx_count_30d:
+                type: number
+                description: Service 30d settlement count
+        caveat:
+          type: string
+          description: 'In-band note: shared/address-level attribution and the null all-time-count until precompute'
+    FacilitatorSettler:
+      type: object
+      description: An enabled on-chain settler address (EOA) for this facilitator.
+      properties:
+        address:
+          type: string
+          description: Settler EOA address
+        network:
+          type: string
+          description: Chain identifier as configured
+        network_caip2:
+          type:
+          - string
+          - 'null'
+          description: Canonical CAIP-2 identifier; null when the raw chain id is not recognized
+        source:
+          type:
+          - string
+          - 'null'
+          description: How the settler address was discovered (e.g. x402scan, submitted)
+        last_seen_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Most recent time this settler was observed settling
+        token_name:
+          type:
+          - string
+          - 'null'
+          description: Settlement token label on this chain (e.g. USDC)
+        token_decimals:
+          type:
+          - integer
+          - 'null'
+          description: Settlement token decimals
+        enabled:
+          type: boolean
+          description: Whether the settler is currently enabled for measurement
+    PaymentRequired:
+      type: object
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
+      properties:
+        x402Version:
+          type: integer
+          enum:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
+          type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
+          properties:
+            url:
+              type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+    FacilitatorDetail:
+      type: object
+      description: Full detail for a single facilitator (TRENO A D5). Carries the list-row fields plus avg $/settlement, a 7d-vs-previous-7d trend, per-chain buyers (an upper bound), the per-(network,token) chains breakdown with first_activity_at, the on-chain settlers, the daily series (honoring period=all), and the listed_services bridge.
+      properties:
+        facilitator_id:
+          type: string
+          example: coinbase
+        name:
+          type: string
+          example: Coinbase
+        website_url:
+          type:
+          - string
+          - 'null'
+          format: uri
+        volume_usd_24h:
+          type: number
+          description: On-chain USDC volume for today (UTC) so far, not a trailing 24-hour window (USD)
+        volume_usd_7d:
+          type: number
+          description: On-chain USDC volume over the trailing 7 days (USD)
+        volume_usd_30d:
+          type: number
+          description: On-chain USDC volume over the trailing 30 days (USD)
+        volume_usd_all:
+          type: number
+          description: On-chain USDC volume over all recorded history (USD)
+        tx_count_24h:
+          type: integer
+          description: Settlement count for today (UTC) so far
+        tx_count_7d:
+          type: integer
+        tx_count_30d:
+          type: integer
+        tx_count_all:
+          type: integer
+        last_activity_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        settler_count:
+          type: integer
+          description: Number of enabled on-chain settler addresses (EOAs)
+        verification:
+          type: string
+          enum:
+          - on-chain
+          - listed
+        avg_settlement_usd_all:
+          type:
+          - number
+          - 'null'
+          description: Average USD per settlement over all history (volume_usd_all / tx_count_all); null when tx_count_all is 0 (never a fabricated 0).
+        avg_settlement_usd_30d:
+          type:
+          - number
+          - 'null'
+          description: Average USD per settlement over the trailing 30 days; null when there are no settlements.
+        trend_7d_vs_prev_7d:
+          type:
+          - number
+          - 'null'
+          description: Ratio of the last 7 days' volume to the previous 7 days' (same-length windows, so it IS the daily-rate comparison); null when the previous window is empty. Invariant, never re-divided.
+        buyers:
+          $ref: '#/components/schemas/FacilitatorBuyers'
+        chains:
+          type: array
+          items:
+            $ref: '#/components/schemas/FacilitatorDetailChain'
+        settlers:
+          type: array
+          items:
+            $ref: '#/components/schemas/FacilitatorSettler'
+        listed_services:
+          $ref: '#/components/schemas/FacilitatorListedServices'
+        series:
+          type: array
+          description: Daily volume series (oldest first). With series_by=total each point is { date, volume_usd, tx_count }; with series_by=chain each point is { date, network, volume_usd }.
+          items:
+            $ref: '#/components/schemas/FacilitatorTimeseriesPoint'
+        method:
+          type: string
+          description: 'In-band method frame: volume measured directly on-chain by settler-address attribution (USDC), never self-reported.'
+        caveat:
+          type: string
+          description: 'In-band caveat: a measured floor, the avg/trend semantics, and the 24h today-so-far note.'
+  headers:
+    MeterRemaining:
+      schema:
+        type: integer
+      description: Free metered GET requests left today for this IP (see the metering note in the API description).
+    MeterReset:
+      schema:
+        type: integer
+      description: 'Unix timestamp (seconds) at which this IP''s free daily metered-GET quota resets: the next 00:00 UTC. Same shape as X-RateLimit-Reset. Lets a caller behind a shared egress IP tell when the per-IP quota rolls over.'
+  responses:
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 404
+              message: Service not found
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error
+    MeteredPaymentRequired:
+      description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
+      headers:
+        PAYMENT-REQUIRED:
+          schema:
+            type: string
+          description: base64 JSON of the x402 PaymentRequired object
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PaymentRequired'

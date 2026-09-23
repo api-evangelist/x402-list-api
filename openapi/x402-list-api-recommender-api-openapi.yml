@@ -1,0 +1,499 @@
+openapi: 3.2.0
+info:
+  title: x402 List Recommender API
+  version: 1.0.0
+  description: Public REST API for x402-list.com - the directory of all services using the x402 protocol (HTTP 402 Payment Required).
+  contact:
+    name: x402 List
+    url: https://x402-list.com
+    email: info@x402-list.com
+  termsOfService: https://x402-list.com/terms
+  license:
+    name: MIT
+  x-data-license: CC-BY-4.0
+servers:
+- url: https://x402-list.com/api/v1
+  description: Production
+tags:
+- name: Recommender
+  description: Rank the best x402 service(s) for a need (the public HTTP recommender)
+paths:
+  /best:
+    get:
+      operationId: getBestServices
+      summary: Recommend the best x402 service(s) for a need
+      description: Ranks the directory and returns the best x402 service(s) for a stated need, in one request (no paging). The ranking is the same two-stage relevance-then-quality scoring the MCP x402_find_best_service tool uses, run server-side. It is scored mostly on per-service reliability (live status, verification, uptime, response time), x402 compliance, and price (USD), filtered by category and network, with a SMALL (about 10%) weight on on-chain traction (settlement volume, transaction count, and unique buyers measured per service over its known payTo via recognized settlers, a conservative undercount). A deterministic danger flag removes a service from this surface entirely (its slug is listed in excluded_danger); a residual warning is penalized but kept. When a free-text q is given, each candidate is also scored on how well the query matches its AI-derived capability tags and summary plus its name/description/category (falling back to a plain substring match). The x402 compliance term is the share of deterministic conformance checks the service passes, capped at 0.6 (the floor of the C band) when at least one of its EVM routes is missing the EIP-712 domain parameters a standard x402 client needs in order to sign a payment. That cap is a statement about the payment envelope, not about the merit of the service, and it is what moved the scoring to generation 2. The generation served today is 3, which also gates the on-chain traction term on an absolute 30-day volume floor, discounts a payout concentrated on one buyer, and scores a service that publishes no payTo as zero instead of renormalizing around it. Scores produced under an earlier generation are not comparable with these; meta.ranking_version on every response says which one produced it. This endpoint is free and metered like every other GET on /api/v1/* (beyond the free daily quota it answers 402; see the metering note). Prices are decimal US dollars.
+      tags:
+      - Recommender
+      parameters:
+      - name: q
+        in: query
+        schema:
+          type: string
+        description: Free-text need description, matched against each service name/description/category plus its AI-derived capability tags and summary.
+      - name: category
+        in: query
+        schema:
+          type: string
+          enum:
+          - AI
+          - Blockchain
+          - Compute
+          - Content
+          - Data
+          - Finance
+          - Other
+          - Verification
+        description: Desired service category from the closed category set (case-insensitive). A value outside the set returns 400; omit for all.
+      - name: network
+        in: query
+        schema:
+          type: string
+        description: Required network name or abbreviation, e.g. "Base" or "BSE". A value outside the known network set returns 400.
+      - name: max_price_usd
+        in: query
+        schema:
+          type: number
+          minimum: 0
+        description: Cap on min_price_usd in US dollars; a service priced cheaper or equal passes (a service with no known price is excluded).
+      - name: require_verified
+        in: query
+        schema:
+          type: boolean
+          default: false
+        description: 'If true, only FORTE-tier verified services are eligible (treno D3: a paid delivery-probe settled and delivered, drift-revocable; the payment-ready base tier is NOT included). A hard filter on the eligible pool, not a scoring input, so it does not change ranking_version. A value other than true/false returns 400.'
+      - name: prefer
+        in: query
+        schema:
+          type: string
+          enum:
+          - balanced
+          - cheapest
+          - fastest
+          - most_reliable
+          default: balanced
+        description: Tie-breaking emphasis for the ranking weights. A value outside the enum returns 400.
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 5
+          minimum: 1
+          maximum: 20
+        description: How many ranked recommendations to return (clamped to 1-20).
+      - name: include_facilitator_context
+        in: query
+        schema:
+          type: boolean
+          default: false
+        description: If true, also return top facilitators by 7d settlement volume as separate ecosystem context (NOT per-service). A value other than true/false returns 400.
+      responses:
+        '200':
+          description: Ranked recommendations plus the ranking basis and any danger-excluded slugs. meta.ranking_version pins the scoring generation.
+          headers:
+            X-Meter-Remaining:
+              $ref: '#/components/headers/MeterRemaining'
+            X-Meter-Reset:
+              $ref: '#/components/headers/MeterReset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BestResult'
+                  meta:
+                    type: object
+                    properties:
+                      ranking_version:
+                        type: integer
+                        description: 'Scoring generation; bumps when the ranking math or its weights change. Currently 3: the compliance term carries the signability cap described above (generation 2) and the traction term carries an absolute volume floor with a single-buyer discount (generation 3). Pin it if you compare scores over time.'
+                  provenance:
+                    $ref: '#/components/schemas/Provenance'
+              example:
+                data:
+                  recommendations:
+                  - rank: 1
+                    slug: weather-x402
+                    name: Weather x402
+                    category: Data
+                    status: online
+                    verified: true
+                    payment_ready: true
+                    uptime_24h: 100
+                    avg_response_time_ms: 120
+                    min_price_usd: 0.01
+                    price_max_usd: 0.01
+                    category_percentile_max: 10
+                    distinct_price_count: 1
+                    networks:
+                    - BSE
+                    endpoint_count: 2
+                    compliance_grade: A
+                    compliance_failed_checks: []
+                    risk_level: clean
+                    capability_tags:
+                      value:
+                      - weather
+                      - forecast
+                      confidence: 0.9
+                      source: ai
+                    traction_status: measured
+                    volume_usd_30d: 42.5
+                    unique_buyers_30d: 7
+                    shared_payout: false
+                    top_buyer_share_30d: 0.3
+                    score: 0.82
+                    relevance: 1
+                    quality: 0.79
+                    why: online, verified, 100% 24h uptime, 120ms, $0.01 min price, compliance A
+                  ranking_basis: Two stages. (1) RELEVANCE ... (2) QUALITY ...
+                  excluded_danger: []
+                  facilitator_context: null
+                meta:
+                  ranking_version: 3
+        '400':
+          description: Invalid parameter (prefer, require_verified, include_facilitator_context, max_price_usd, category, or a network outside the known set)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '402':
+          $ref: '#/components/responses/MeteredPaymentRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  schemas:
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
+    FacilitatorContext:
+      type: object
+      description: 'Ecosystem facilitator context (NOT per-service): top facilitators by 7d settlement volume with a two-state verification flag.'
+      properties:
+        facilitator_id:
+          type: string
+        name:
+          type: string
+        volume_usd_7d:
+          type: number
+          description: decimal US dollars
+        tx_count_7d:
+          type: integer
+        verification:
+          type: string
+          enum:
+          - on-chain
+          - listed
+          description: '"on-chain" iff observed on-chain volume greater than zero, else "listed"'
+    BestResult:
+      type: object
+      description: 'The GET /best data block: ranked recommendations plus the ranking basis, danger-excluded slugs, and optional facilitator context.'
+      properties:
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/BestRecommendation'
+        ranking_basis:
+          type: string
+          description: Plain-language description of how the ranking was produced (the two-stage relevance-then-quality blend).
+        excluded_danger:
+          type: array
+          items:
+            type: string
+          description: Slugs removed from the recommendation set by a deterministic danger flag (blocklist or impersonation match only).
+        facilitator_context:
+          description: Top facilitators by 7d settlement volume when include_facilitator_context=true, otherwise null.
+          oneOf:
+          - type: array
+            items:
+              $ref: '#/components/schemas/FacilitatorContext'
+          - type: 'null'
+        note:
+          type: string
+          description: Present only when no service matched the given filters.
+    PaymentRequirements:
+      type: object
+      description: A single x402 payment option (one element of accepts[]).
+      properties:
+        scheme:
+          type: string
+          enum:
+          - exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        amount:
+          type: string
+          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
+          example: '500000'
+        payTo:
+          type: string
+          description: Receiving wallet address
+        maxTimeoutSeconds:
+          type: integer
+          example: 300
+        extra:
+          type: object
+          description: EIP-712 signing domain parameters
+          properties:
+            name:
+              type: string
+              example: USD Coin
+            version:
+              type: string
+              example: '2'
+    BestRecommendation:
+      type: object
+      description: One ranked service recommendation from GET /best. All *_usd fields are decimal US dollars.
+      properties:
+        rank:
+          type: integer
+          description: 1-based position in the returned ranking
+        slug:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+          enum:
+          - online
+          - degraded
+          - offline
+          - unknown
+        verified:
+          type: boolean
+          description: 'FORTE tier (treno D3): paid delivery-probe settled and delivered, drift-revocable, no time decay. The tier require_verified filters on.'
+        payment_ready:
+          type: boolean
+          description: 'BASE tier (treno D3): answers a valid x402 challenge and is alive. The broad signal verified used to carry.'
+        uptime_24h:
+          type:
+          - number
+          - 'null'
+        avg_response_time_ms:
+          type:
+          - integer
+          - 'null'
+        min_price_usd:
+          type:
+          - number
+          - 'null'
+          description: Entry (min) price in USD
+        price_max_usd:
+          type:
+          - number
+          - 'null'
+          description: Highest tier price in USD; equals min_price_usd when flat
+        category_percentile_max:
+          type:
+          - number
+          - 'null'
+        distinct_price_count:
+          type:
+          - integer
+          - 'null'
+          description: 1 = flat pricing, greater than 1 = tiered
+        networks:
+          type: array
+          items:
+            type: string
+        endpoint_count:
+          type: integer
+        compliance_grade:
+          type:
+          - string
+          - 'null'
+          description: x402 conformance grade, capped at C when at least one EVM route is missing the EIP-712 domain parameters a standard x402 client needs in order to sign
+        compliance_failed_checks:
+          type:
+          - array
+          - 'null'
+          items:
+            type: string
+          description: Ids of the conformance checks that failed; [] = all pass, null = none graded. eip712_domain_extra here means a standard x402 client cannot sign a payment for at least one route of this service
+        risk_level:
+          type:
+          - string
+          - 'null'
+          enum:
+          - clean
+          - warning
+          - danger
+          - null
+        capability_tags:
+          type:
+          - object
+          - 'null'
+          description: AI-derived capability tags marked {value, confidence, source:"ai"}, or null when the model could not ground them
+          properties:
+            value:
+              type: array
+              items:
+                type: string
+            confidence:
+              type: number
+              description: 0-1
+            source:
+              type: string
+              enum:
+              - ai
+        traction_status:
+          type:
+          - string
+          - 'null'
+          enum:
+          - measured
+          - no-payto
+          - unmeasured-network
+          - unresponsive
+          - null
+        volume_usd_30d:
+          type:
+          - number
+          - 'null'
+          description: Conservative undercount; pro-quota on a shared payout
+        unique_buyers_30d:
+          type:
+          - number
+          - 'null'
+        shared_payout:
+          type:
+          - boolean
+          - 'null'
+        top_buyer_share_30d:
+          type:
+          - number
+          - 'null'
+          description: 0-1 concentration of the single largest buyer; a published signal, NOT part of the score
+        score:
+          type: number
+          description: Final blended score (0-1), rounded to 2 decimals
+        relevance:
+          type:
+          - number
+          - 'null'
+          description: Relevance sub-score (0-1) when a free-text q was given, else null
+        quality:
+          type: number
+          description: Measured quality sub-score (0-1)
+        why:
+          type: string
+          description: Short human-readable rationale
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+    PaymentRequired:
+      type: object
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
+      properties:
+        x402Version:
+          type: integer
+          enum:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
+          type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
+          properties:
+            url:
+              type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+  headers:
+    MeterRemaining:
+      schema:
+        type: integer
+      description: Free metered GET requests left today for this IP (see the metering note in the API description).
+    MeterReset:
+      schema:
+        type: integer
+      description: 'Unix timestamp (seconds) at which this IP''s free daily metered-GET quota resets: the next 00:00 UTC. Same shape as X-RateLimit-Reset. Lets a caller behind a shared egress IP tell when the per-IP quota rolls over.'
+  responses:
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
+    MeteredPaymentRequired:
+      description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
+      headers:
+        PAYMENT-REQUIRED:
+          schema:
+            type: string
+          description: base64 JSON of the x402 PaymentRequired object
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PaymentRequired'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error

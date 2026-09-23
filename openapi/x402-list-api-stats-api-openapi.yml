@@ -1,0 +1,403 @@
+openapi: 3.2.0
+info:
+  title: x402 List Stats API
+  version: 1.0.0
+  description: Public REST API for x402-list.com - the directory of all services using the x402 protocol (HTTP 402 Payment Required).
+  contact:
+    name: x402 List
+    url: https://x402-list.com
+    email: info@x402-list.com
+  termsOfService: https://x402-list.com/terms
+  license:
+    name: MIT
+  x-data-license: CC-BY-4.0
+servers:
+- url: https://x402-list.com/api/v1
+  description: Production
+tags:
+- name: Stats
+  description: Aggregate statistics about the x402 ecosystem
+paths:
+  /stats:
+    get:
+      operationId: getStats
+      summary: Aggregate ecosystem statistics
+      description: 'Returns aggregate statistics about the x402 ecosystem: total services, endpoints, networks, uptime averages, response time averages, checks per hour, and pricing aggregates (avg/min/max/median price in USD).'
+      tags:
+      - Stats
+      responses:
+        '200':
+          description: Aggregate stats with pricing breakdown
+          headers:
+            X-Meter-Remaining:
+              $ref: '#/components/headers/MeterRemaining'
+            X-Meter-Reset:
+              $ref: '#/components/headers/MeterReset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AggregateStats'
+                  provenance:
+                    $ref: '#/components/schemas/Provenance'
+              example:
+                data:
+                  total_services: 522
+                  total_endpoints: 3132
+                  total_networks: 25
+                  total_networks_note: mainnet networks only; networks[] includes testnets flagged by is_mainnet
+                  avg_uptime_24h: 87.9
+                  avg_uptime_7d: 89
+                  avg_uptime_method: per-service mean of the latest daily uptime rollup
+                  avg_response_time_ms: 552
+                  checks_per_hour: 1740
+                  pricing:
+                    avg_price_usd: 0.47
+                    min_price_usd: 0
+                    max_price_usd: 50
+                    median_price_usd: 0.01
+                  networks:
+                  - abbreviation: BSE
+                    is_mainnet: true
+                    service_count: 490
+                    avg_uptime: 88.9
+                  - abbreviation: SOL
+                    is_mainnet: true
+                    service_count: 198
+                    avg_uptime: 94.4
+                  traction:
+                    unique_buyers_30d: 5535
+                    volume_usd_30d: 237198.115758
+                    settlement_count_30d: 8485593
+                    measured_services: 372
+                    measured_networks:
+                    - BSE
+                    - POL
+                    - SOL
+                    coverage_of_measured_flow_pct: 17.9
+                    measured_flow_freshness:
+                      oldest_cursor_age_seconds: 771
+                      stale_sync_groups: 0
+                      total_sync_groups: 49
+                      stale_facilitators: 0
+                      total_facilitators: 36
+                    top_10_services_share_pct: 98.3
+                    top_1_service_share_pct: 87.1
+                    top_1_service_top_buyer_share_pct: 99.1
+                    method: dedup on settlement identity (network,tx_hash,log_index); do not sum per-service figures; measured_networks are network abbreviations, the per-service traction block uses CAIP-2 ids; coverage_of_measured_flow_pct is the listed dedup volume as a share of the flow measurable by our tracked settlers (the facilitator daily volume we measure, not the whole ecosystem); top_10_services_share_pct is the top 10 services' share of the same 30d dedup volume; both are precomputed hourly and null until the first refresh
+                    caveat: measured across listed services, a measured floor over 30d, not an ecosystem total; USDC via measured facilitators only
+                  verified_count: 1
+                  payment_ready_count: 470
+                  listing_growth:
+                    new_7d: 54
+                    new_30d: 194
+                  facilitator_volume_usd_30d: 1296984.27
+                  facilitator_volume_note: Aggregate facilitator settlement volume over 30 days across measured facilitators; a superset of the listed-services flow, not de-duplicated on settlement identity.
+        '402':
+          $ref: '#/components/responses/MeteredPaymentRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  schemas:
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
+    AggregateStats:
+      type: object
+      description: Aggregate statistics about the x402 ecosystem
+      properties:
+        total_services:
+          type: integer
+        total_endpoints:
+          type: integer
+        total_networks:
+          type: integer
+          description: Count of distinct networks that carry current pricing on an active endpoint, recomputed live from the pricing rows. Networks the reference table classifies as testnet are excluded; a chain not yet in the reference table still counts. The networks[] array is built by an inner join on the reference table and omits chains absent from it, so networks[] can be SHORTER than this count (not longer) when live pricing spans chains the reference table has not yet catalogued.
+        total_networks_note:
+          type: string
+          description: Human-readable reminder of the total_networks semantics served in-band with the response
+        avg_uptime_24h:
+          type: number
+        avg_uptime_7d:
+          type: number
+        avg_uptime_method:
+          type: string
+          description: How per-network avg_uptime is computed. Identical to the method used by /networks.
+        avg_response_time_ms:
+          type: integer
+        checks_per_hour:
+          type: integer
+        pricing:
+          type: object
+          properties:
+            avg_price_usd:
+              type: number
+            min_price_usd:
+              type: number
+            max_price_usd:
+              type: number
+            median_price_usd:
+              type: number
+        networks:
+          type: array
+          items:
+            type: object
+            properties:
+              abbreviation:
+                type: string
+              is_mainnet:
+                type: boolean
+              service_count:
+                type: integer
+              avg_uptime:
+                type: number
+        traction:
+          type: object
+          description: 'Measured on-chain traction aggregated across ALL listed services over the last 30 days. Computed directly over the raw settlements, deduplicated on settlement identity (network, tx_hash, log_index), and NEVER summed from the per-service assessment.traction figures (distinct buyers are not additive across services, and summing pro-quota volume would reintroduce shared-attribution rounding). USDC only, via measured facilitators: a measured floor across the listed directory, not an ecosystem total.'
+          properties:
+            unique_buyers_30d:
+              type:
+              - integer
+              - 'null'
+              description: Distinct on-chain buyer addresses across listed services over the trailing 30 days (deduplicated, not a sum of per-service buyer counts). null until the first hourly precompute commits the cache row, never a fake 0.
+            volume_usd_30d:
+              type:
+              - number
+              - 'null'
+              description: USDC settlement volume across listed services over the trailing 30 days (USD; a measured floor, not summed from per-service figures). null until the first hourly precompute, never a fake 0.
+            settlement_count_30d:
+              type:
+              - integer
+              - 'null'
+              description: 'Deduped settlement count across listed services over the trailing 30 days. Distinct from any per-service tx_count_30d: this is a count of deduped settlement legs, not a sum. null until the first hourly precompute, never a fake 0.'
+            measured_services:
+              type:
+              - integer
+              - 'null'
+              description: Number of listed services with at least one attributed settlement in the window (walks the payTo mapping with the last_seen + 1 day grace). null until the first hourly precompute, never a fake 0.
+            measured_networks:
+              type: array
+              items:
+                type: string
+              description: Network abbreviations settled on in the window (e.g. BSE, SOL). Abbreviations here, unlike the per-service traction block which uses CAIP-2 ids. Empty until the first hourly precompute.
+            coverage_of_measured_flow_pct:
+              type:
+              - number
+              - 'null'
+              description: 'Coverage KPI: the listed dedup settlement volume (volume_usd_30d) as a percentage of the flow measurable by our tracked settlers over the same 30 days (the facilitator daily volume we measure, NOT the whole ecosystem, so it is a floor on our coverage of the flow we can see). Precomputed hourly; null until the first refresh (never a fake 0). The denominator is also declared in-band in method.'
+            measured_flow_freshness:
+              type:
+              - object
+              - 'null'
+              description: 'How fresh the flow behind coverage_of_measured_flow_pct is (W2-13#3). Coverage says how much of the measurable flow we cover, not whether that flow is still being ingested: a settler-sync cursor frozen hours ago keeps serving a coverage figure that looks current. Measured at SYNC-GROUP grain (facilitator x network x token), which is the unit that actually freezes: a facilitator can sync Base every 15 minutes while its Solana groups have not completed in hours, and rolling that up by newest completion would report it as live. Always present as a key; null only when the freshness read itself failed at response time (the rest of the response still serves). An empty sync state is never null: it reads 0 of 0, never a fabricated freshness. Aggregate only, and it reports the same sync-state table, at the same grain and with the same 2-hour threshold, as the ingest block of GET /api/health, which is where the site-level liveness verdict lives.'
+              properties:
+                oldest_cursor_age_seconds:
+                  type:
+                  - integer
+                  - 'null'
+                  description: 'Age, in whole seconds at response time, of the most-behind sync GROUP''s last clean settler-sync completion (not the most-behind facilitator: a partly frozen facilitator is reported by its frozen group, never by its freshest one). null when no tracked group has ever completed a sync (an absence of measurement, never a fresh 0); such a group is counted in stale_sync_groups.'
+                stale_sync_groups:
+                  type: integer
+                  description: 'Sync groups whose cursor is frozen past the staleness threshold (2 hours, well above the 15-minute sync cadence) or that never completed a sync. This is the size of the freeze: the settlement flow those groups carry is decaying, so a non-zero value means the coverage figure is computed over a partly stale window.'
+                total_sync_groups:
+                  type: integer
+                  description: 'Settler-sync groups (facilitator x network x token) tracked at all: the denominator for stale_sync_groups.'
+                stale_facilitators:
+                  type: integer
+                  description: 'Facilitators with AT LEAST ONE frozen sync group. Any-stale on purpose: a facilitator counts here as soon as part of its ingest is frozen, even while its other networks keep completing, because the flow it contributes is already partial. Read it next to stale_sync_groups: how many settlement paths are affected, against how much of the ingest.'
+                total_facilitators:
+                  type: integer
+                  description: 'Facilitators carrying a settler-sync state row at all: the denominator for stale_facilitators.'
+            top_10_services_share_pct:
+              type:
+              - number
+              - 'null'
+              description: 'Concentration disclosure: the share of the 30d dedup volume held by the top 10 services (ranked by volume via the payTo mapping). The numerator is the deduped settlements mapped to any top-10 service, never a sum of the per-service figures; the denominator is the same whole-window dedup total (volume_usd_30d). Precomputed hourly; null until the first refresh.'
+            top_1_service_share_pct:
+              type:
+              - number
+              - 'null'
+              description: 'Concentration disclosure one level deeper than top_10: the share of the 30d dedup volume held by the SINGLE largest service (ranked by volume via the payTo mapping). By construction top_1 <= top_10. Same hourly precompute; null until the first refresh (never a fake 0).'
+            top_1_service_top_buyer_share_pct:
+              type:
+              - number
+              - 'null'
+              description: 'One level deeper again: within that single largest service, the share of ITS 30d volume held by its own single largest buyer. Same hourly precompute; null until the first refresh (never a fake 0).'
+            method:
+              type: string
+              description: 'How the aggregate is computed: dedup on settlement identity, never a sum of the per-service figures; also declares the coverage_of_measured_flow_pct denominator and the top_10_services_share_pct basis in-band'
+            caveat:
+              type: string
+              description: 'In-band honesty note: a measured floor across listed services over 30d, not an ecosystem total; USDC via measured facilitators only'
+        verified_count:
+          type: integer
+          description: 'Number of services in the FORTE verified tier (treno D3): a paid delivery-probe settled and delivered, drift-revocable. Same predicate as the ?verified=true list filter. Starts at 0 and grows only with real payments. SEMANTIC CHANGE: this used to count the broad "answers a valid 402 and is alive" set, which is now payment_ready_count.'
+        payment_ready_count:
+          type: integer
+          description: 'Number of services in the BASE payment-ready tier (treno D3): answered a valid x402 challenge and alive within the decay window (a probe success within the last 7 days, or api-key exempt). Same predicate as the ?payment_ready=true list filter. The broad signal verified_count used to carry.'
+        listing_growth:
+          type: object
+          description: 'TRENO A D9: how many services were first listed recently.'
+          properties:
+            new_7d:
+              type: integer
+              description: Services first listed in the last 7 days
+            new_30d:
+              type: integer
+              description: Services first listed in the last 30 days
+        facilitator_volume_usd_30d:
+          type:
+          - number
+          - 'null'
+          description: 'TRENO A D9: aggregate settlement volume (USD) over the trailing 30 days across measured (enabled) facilitators. A non-deduped SUPERSET of the listed-services flow (it is not restricted to listed payTo mappings), so it is not comparable one-to-one with the traction block. null (never a fabricated 0) until facilitator snapshots exist. See facilitator_volume_note.'
+        facilitator_volume_note:
+          type: string
+          description: In-band note framing facilitator_volume_usd_30d as a non-deduped superset of the listed-services flow
+    PaymentRequirements:
+      type: object
+      description: A single x402 payment option (one element of accepts[]).
+      properties:
+        scheme:
+          type: string
+          enum:
+          - exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        amount:
+          type: string
+          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
+          example: '500000'
+        payTo:
+          type: string
+          description: Receiving wallet address
+        maxTimeoutSeconds:
+          type: integer
+          example: 300
+        extra:
+          type: object
+          description: EIP-712 signing domain parameters
+          properties:
+            name:
+              type: string
+              example: USD Coin
+            version:
+              type: string
+              example: '2'
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+    PaymentRequired:
+      type: object
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
+      properties:
+        x402Version:
+          type: integer
+          enum:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
+          type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
+          properties:
+            url:
+              type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+  headers:
+    MeterRemaining:
+      schema:
+        type: integer
+      description: Free metered GET requests left today for this IP (see the metering note in the API description).
+    MeterReset:
+      schema:
+        type: integer
+      description: 'Unix timestamp (seconds) at which this IP''s free daily metered-GET quota resets: the next 00:00 UTC. Same shape as X-RateLimit-Reset. Lets a caller behind a shared egress IP tell when the per-IP quota rolls over.'
+  responses:
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
+    MeteredPaymentRequired:
+      description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
+      headers:
+        PAYMENT-REQUIRED:
+          schema:
+            type: string
+          description: base64 JSON of the x402 PaymentRequired object
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PaymentRequired'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error

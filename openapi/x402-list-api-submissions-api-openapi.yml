@@ -1,0 +1,686 @@
+openapi: 3.2.0
+info:
+  title: x402 List Submissions API
+  version: 1.0.0
+  description: Public REST API for x402-list.com - the directory of all services using the x402 protocol (HTTP 402 Payment Required).
+  contact:
+    name: x402 List
+    url: https://x402-list.com
+    email: info@x402-list.com
+  termsOfService: https://x402-list.com/terms
+  license:
+    name: MIT
+  x-data-license: CC-BY-4.0
+servers:
+- url: https://x402-list.com/api/v1
+  description: Production
+tags:
+- name: Submissions
+  description: Submit new x402 services or facilitators for review and listing
+paths:
+  /submit:
+    post:
+      operationId: submitService
+      summary: Submit a new service or facilitator for review
+      description: 'Submit a new x402-compatible service, or an x402 facilitator (settlement operator), to be reviewed and listed in the directory. The optional body field "type" selects the branch: omit it (or use any value other than "facilitator") for a service submission; set "type": "facilitator" for a facilitator submission. Service submissions are automatically probed for valid HTTP 402 responses on the provided endpoints. Facilitator submissions are checked for on-chain presence instead: the enabled EVM chains among the declared networks are scanned for recent USDC settlement activity originated by the submitted settler addresses (30-day window, 15 seconds total budget); Solana and chains outside the measured registry are recorded as declared claims and resolved at manual review. A failed or idle probe never blocks the submission. Every submission of either type is manually reviewed before appearing in the directory. A service URL on a free compute host (vercel.app, workers.dev, pages.dev, netlify.app, onrender.com, railway.app, fly.dev, herokuapp.com, replit.app, glitch.me, deno.dev, pythonanywhere.com, firebaseapp.com, web.app and similar) is answered with HTTP 402: submitting it costs a one-off $1 USDC on Base, non-refundable, which buys a place in the human review queue and nothing more. A service URL on static-only hosting (github.io, gitlab.io, surge.sh) or on a dev-tunnel domain (ngrok, trycloudflare.com, localhost.run, serveo.net and similar) is rejected with HTTP 400 at any price. Website URLs are rejected only when they are dev-tunnel domains. Facilitator submissions are rejected with HTTP 400 for any free-hosting website URL, with no paid option. Each email address may submit once every 7 days per submission type (service and facilitator cooldowns are tracked separately): a second submission of the same type within the cooldown returns HTTP 429 with a Retry-After header (seconds until the cooldown ends). Submissions still pending after the 7-day review window are automatically rejected and the submitter is notified by email.'
+      tags:
+      - Submissions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - $ref: '#/components/schemas/ServiceSubmissionRequest'
+              - $ref: '#/components/schemas/FacilitatorSubmissionRequest'
+            examples:
+              service:
+                summary: Service submission (default branch)
+                value:
+                  url: https://api.example.com
+                  email: dev@example.com
+                  service_name: Example x402 API
+                  description: AI-powered text generation via x402 payments
+                  website_url: https://example.com
+                  category: AI
+                  endpoints:
+                  - /v1/generate
+                  - /v1/classify
+                  notes: Supports both Base and Solana networks
+              facilitator:
+                summary: Facilitator submission (type=facilitator)
+                value:
+                  type: facilitator
+                  email: operator@examplepay.com
+                  facilitator_name: ExamplePay
+                  website_url: https://examplepay.com
+                  description: x402 settlement facilitator for USDC on Base and Solana
+                  settler_addresses:
+                  - '0x7c5fa2ab8c9d01234e56f7a8b9c0d1e2f3a4b5c6'
+                  - 4Nd1mYQZ7d5xUEhFcq8xJwzB3tYkTn5eGf2u1V9pQrSt
+                  networks:
+                  - base
+                  - solana
+                  facilitator_id_slug: examplepay
+                  token_claims:
+                  - USDC
+                  claimed_volume_usd: '125000'
+                  notes: Settling x402 payments since May 2026
+      responses:
+        '201':
+          description: Submission created, pending manual review
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      submission_id:
+                        type: string
+                        format: uuid
+                      status:
+                        type: string
+                        enum:
+                        - pending
+                      probe_result:
+                        description: Result of the automatic pre-review probe; null when the probe timed out or could not run. Service submissions report the HTTP 402 probe (endpoints_found, errors); facilitator submissions report the on-chain presence probe (addresses_with_activity, tx_count, errors) over the enabled EVM chains.
+                        oneOf:
+                        - type: object
+                          title: Service probe result
+                          properties:
+                            endpoints_found:
+                              type: integer
+                            errors:
+                              type: array
+                              items:
+                                type: string
+                        - type: object
+                          title: Facilitator probe result
+                          properties:
+                            addresses_with_activity:
+                              type: array
+                              items:
+                                type: string
+                              description: Submitted settler addresses with at least one settlement observed in the probe window
+                            tx_count:
+                              type: integer
+                              description: Total settlement transactions observed in the probe window across the probed chains
+                            errors:
+                              type: array
+                              items:
+                                type: string
+                        - type: 'null'
+                  provenance:
+                    $ref: '#/components/schemas/Provenance'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '402':
+          description: 'Payment required (service branch only). Three cases: the service URL is on a free compute host ($1.00); the latest submission for this email or this service URL was rejected less than 14 days ago ($0.50, which replaces the 7-day cooldown, and once 14 days have passed resubmitting is free again); or both, in which case the two stack into a single $1.50 charge. Free-host fees are never refunded and buy review, not a listing. Read accepts[0].amount and resource.description for the amount and the reason of this particular charge; the body error code is "resubmission_fee_required" for the resubmit-only case and "free_host_fee_required" whenever the free-host fee is part of it. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header. When the charge layer is offline the free-host case is rejected with HTTP 400 instead, as it was before this fee existed. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (which is body-only).'
+          headers:
+            PAYMENT-REQUIRED:
+              schema:
+                type: string
+              description: base64 JSON of the x402 PaymentRequired object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequired'
+              example:
+                x402Version: 2
+                accepts:
+                - scheme: exact
+                  network: eip155:8453
+                  asset: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+                  amount: '500000'
+                  payTo: '0x0000000000000000000000000000000000000000'
+                  maxTimeoutSeconds: 300
+                  extra:
+                    name: USD Coin
+                    version: '2'
+                resource:
+                  url: https://x402-list.com/api/v1/submit
+                  description: Resubmission fee after a rejected submission
+                  mimeType: application/json
+                  serviceName: x402 List
+                error: resubmission_fee_required
+                message: A submission from this email or for this URL was rejected less than 14 days ago, so resubmitting now requires a $0.50 x402 payment on Base (USDC). Pay with an x402-capable client by sending the request again with a PAYMENT-SIGNATURE header, or wait until 14 days have passed to resubmit for free. See https://x402-list.com/api for the flow.
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /services/{slug}/request-update:
+    post:
+      operationId: requestServiceUpdate
+      summary: Request an owner update to a listed service (F10)
+      description: 'Service owners propose changes to the DECLARATIVE metadata of their listing: name, description, website_url, category, contact_email, new endpoints (endpoints_add, each optionally prefixed with its HTTP method), and base_url (an identity change, reviewed with extra scrutiny). Measured fields (verified, uptime, pricing, status, payTo) are read-only for everyone and cannot be updated through this channel. All fields are compared server-side against the live listing and only actual changes are recorded; submitting with no effective change returns HTTP 400. The response contains a ONE-TIME ownership token (returned only once, never stored in clear): publish it as a line of a plain-text file at {base_url origin}/.well-known/x402list.txt on the CURRENTLY listed domain, then call verify-ownership. The token expires after 72 hours. After verification the request goes to manual review ALWAYS; the requester is notified by email of the outcome. Nothing about a pending request is public. Cooldown: one update request per (email, service) pair every 7 days (HTTP 429 with Retry-After). Only a live or approved request counts: a rejected request does not, so a corrected one can be sent immediately. A request already verified and under review for the same service blocks new ones (HTTP 409).'
+      tags:
+      - Submissions
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceUpdateRequest'
+            example:
+              email: owner@example.com
+              name: Example x402 API
+              base_url: https://api.example.com
+              website_url: https://example.com
+              category: AI
+              description: AI-powered text generation via x402 payments
+              contact_email: owner@example.com
+              endpoints_add:
+              - /v1/summarize
+              - POST /v1/chat/completions
+      responses:
+        '201':
+          description: Update request created, awaiting ownership verification
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      request_id:
+                        type: string
+                        format: uuid
+                      status:
+                        type: string
+                        enum:
+                        - pending_verification
+                      proposed_changes:
+                        type: object
+                        description: 'The server-computed diff: only the fields that actually differ from the live listing. endpoints_add is echoed back normalized, as {method, path} objects'
+                      ownership_token:
+                        type: string
+                        description: One-time domain-proof token. Shown ONLY in this response; publish it at the well_known_url before it expires
+                      well_known_url:
+                        type: string
+                        format: uri
+                      well_known_path:
+                        type: string
+                        enum:
+                        - /.well-known/x402list.txt
+                      token_expires_at:
+                        type: string
+                        format: date-time
+                      verify:
+                        type: object
+                        description: The follow-up call that completes the proof
+                      reissue:
+                        type: object
+                        description: 'The recovery call if the ownership_token is lost: POST it once and a replacement is emailed to the address on the request'
+                      note:
+                        type: string
+                  provenance:
+                    $ref: '#/components/schemas/Provenance'
+        '400':
+          description: Validation error or no effective change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: A verified update request for this service is already under review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /services/{slug}/reissue-token:
+    post:
+      operationId: reissueOwnershipToken
+      summary: Re-issue a lost ownership token for an update request (F10)
+      description: 'The ownership token is returned exactly once, by request-update. If it is lost, this endpoint queues a replacement: POST the request_id together with the SAME email that created the request. The new token is delivered BY EMAIL ONLY, to the address already on the request, and never appears in this response. The response is deliberately identical in every case (request found or not, wrong email, already verified, already reviewed, token expired, re-issue already queued): this endpoint is not an oracle for whether a pending update request exists, which is information x402-list does not publish. For the same reason there is no GET. One re-issue per update request: it restores access to the proof, it does not extend the request indefinitely. Lost a second time: send a new update request once the current one lapses, since a pending request with a live token is what holds the 7-day cooldown on that email and listing. A request whose token has already expired holds nothing, so its replacement can go out immediately. Rate limited per IP more tightly than the general API budget.'
+      tags:
+      - Submissions
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - request_id
+              - email
+              properties:
+                request_id:
+                  type: string
+                  format: uuid
+                email:
+                  type: string
+                  format: email
+                  description: The email used to create the update request
+            example:
+              request_id: 3f6b1c2a-9d4e-4f6a-8b7c-1a2b3c4d5e6f
+              email: owner@example.com
+      responses:
+        '200':
+          description: Accepted. The same body is returned whether or not a matching request exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                        - accepted
+                      message:
+                        type: string
+                  provenance:
+                    $ref: '#/components/schemas/Provenance'
+        '400':
+          description: Missing or malformed request_id / email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /services/{slug}/verify-ownership:
+    post:
+      operationId: verifyServiceOwnership
+      summary: Verify domain ownership for an update request (F10)
+      description: 'Completes the domain proof for a pending update request: the server fetches {base_url origin}/.well-known/x402list.txt from the CURRENTLY listed domain (SSRF-guarded, redirects revalidated, 10s timeout) and matches the published token against the stored hash. The token is one-shot: on success it is consumed and cannot verify again. If the proposed diff touches base_url or adds endpoints, the standard HTTP 402 probe runs right after verification and its result is attached for the reviewer. Verification never auto-applies anything: review remains manual and the outcome is emailed.'
+      tags:
+      - Submissions
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - request_id
+              properties:
+                request_id:
+                  type: string
+                  format: uuid
+            example:
+              request_id: 3f6b1c2a-9d4e-4f6a-8b7c-1a2b3c4d5e6f
+      responses:
+        '200':
+          description: Ownership verified (or already verified)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      request_id:
+                        type: string
+                        format: uuid
+                      status:
+                        type: string
+                        enum:
+                        - verified
+                        - already_verified
+                      probe_result:
+                        description: HTTP 402 probe summary when the diff touches base_url/endpoints; null otherwise or when the probe timed out
+                        oneOf:
+                        - type: object
+                          properties:
+                            endpoints_found:
+                              type: integer
+                            errors:
+                              type: array
+                              items:
+                                type: string
+                        - type: 'null'
+                      note:
+                        type: string
+                  provenance:
+                    $ref: '#/components/schemas/Provenance'
+        '400':
+          description: Well-known file unreachable or token not found in it
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Request already reviewed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: Ownership token expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  schemas:
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
+    ServiceSubmissionRequest:
+      type: object
+      description: 'Service submission body: the default branch of POST /submit when "type" is omitted'
+      required:
+      - url
+      - email
+      - service_name
+      - description
+      - website_url
+      - category
+      - endpoints
+      properties:
+        type:
+          type: string
+          description: Optional submission type discriminator. Omit for services; any value other than "facilitator" is treated as a service submission.
+        url:
+          type: string
+          format: uri
+          description: Base URL of the x402 service. On a free compute host (vercel.app, workers.dev and similar) the endpoint answers HTTP 402 and the submission costs a one-off, non-refundable $1 USDC on Base; on static-only hosting or a dev tunnel it is rejected with HTTP 400 at any price
+        email:
+          type: string
+          format: email
+          description: Submitter contact email
+        service_name:
+          type: string
+          description: Human-readable name of the service
+        description:
+          type: string
+          description: Brief description of what the service does
+        website_url:
+          type: string
+          format: uri
+          description: Public website URL
+        category:
+          type: string
+          description: Service category (use /categories to get valid values)
+        endpoints:
+          type: array
+          items:
+            type: string
+          description: List of endpoint paths to probe (e.g. ["/v1/generate", "/v1/translate"])
+        notes:
+          type: string
+          description: Optional additional context
+    PaymentRequirements:
+      type: object
+      description: A single x402 payment option (one element of accepts[]).
+      properties:
+        scheme:
+          type: string
+          enum:
+          - exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        amount:
+          type: string
+          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
+          example: '500000'
+        payTo:
+          type: string
+          description: Receiving wallet address
+        maxTimeoutSeconds:
+          type: integer
+          example: 300
+        extra:
+          type: object
+          description: EIP-712 signing domain parameters
+          properties:
+            name:
+              type: string
+              example: USD Coin
+            version:
+              type: string
+              example: '2'
+    FacilitatorSubmissionRequest:
+      type: object
+      description: 'Facilitator submission body, selected by "type": "facilitator". Facilitators are settlement infrastructure: they are verified by on-chain settlement activity from their settler addresses, never by an HTTP 402 probe. Approved facilitators are listed on GET /facilitators with verification "listed" and switch to "on-chain" automatically once settlement volume is measured.'
+      required:
+      - type
+      - email
+      - facilitator_name
+      - website_url
+      - settler_addresses
+      - networks
+      properties:
+        type:
+          type: string
+          enum:
+          - facilitator
+          description: Selects the facilitator branch of POST /submit
+        email:
+          type: string
+          format: email
+          description: Submitter contact email
+        facilitator_name:
+          type: string
+          maxLength: 255
+          description: Human-readable facilitator name
+        website_url:
+          type: string
+          format: uri
+          description: Public website URL (own domain; free hosting and dev-tunnel domains are rejected)
+        description:
+          type: string
+          description: Optional description of what the facilitator does
+        settler_addresses:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 25
+          description: 'On-chain addresses that originate settlement transactions: 0x EVM addresses (40 hex chars) or base58 Solana addresses (32-44 chars). Also accepted as one comma/newline separated string.'
+        networks:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 25
+          description: Declared settlement networks (e.g. "base", "polygon", "solana"). Enabled EVM chains are probed on-chain before review; other chains are recorded as declared claims. Also accepted as one comma/newline separated string.
+        facilitator_id_slug:
+          type: string
+          maxLength: 100
+          pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*$
+          description: Optional proposed identifier slug (lowercase letters, digits, single hyphens). Reserved names are flagged for manual review.
+        token_claims:
+          type: array
+          items:
+            type: string
+          maxItems: 25
+          description: Optional list of tokens the facilitator claims to settle (informational only)
+        claimed_volume_usd:
+          type:
+          - string
+          - number
+          description: Optional self-reported all-time settlement volume in USD (informational only; cross-checked against the on-chain probe at review)
+        notes:
+          type: string
+          description: Optional additional context
+    ServiceUpdateRequest:
+      type: object
+      description: 'Owner update request body (F10). Send ALL fields prefilled with the live listing values: the server computes the diff and records only what actually changed. Empty or omitted fields are always treated as UNCHANGED (nothing can be cleared through this channel). Only declarative metadata is updatable; measured fields (verified, uptime, pricing, status, payTo) are read-only for everyone.'
+      required:
+      - email
+      properties:
+        email:
+          type: string
+          format: email
+          description: 'Requester email: receives the review outcome. Subject to the per-(email, service) 7-day cooldown'
+        name:
+          type: string
+          maxLength: 255
+          description: 'Proposed service name (the slug NEVER changes: citations and monitor history hang off it)'
+        base_url:
+          type: string
+          format: uri
+          description: Proposed base URL. Changing it is an identity change and is reviewed with extra scrutiny; the ownership proof is always checked on the CURRENT domain
+        website_url:
+          type: string
+          format: uri
+          description: Proposed website URL (dev-tunnel domains are rejected; free hosting is allowed)
+        category:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 2000
+        contact_email:
+          type: string
+          format: email
+          description: Proposed owner contact email; empty string = keep unchanged
+        endpoints_add:
+          type: array
+          items:
+            type: string
+          maxItems: 50
+          example:
+          - /v1/summarize
+          - POST /v1/chat/completions
+          description: NEW x402-protected endpoints to add, one per entry, as "/v1/resource" or "POST /v1/resource". GET and POST are the accepted methods (case-insensitive) and an entry with no method prefix is taken as GET. Method and path together identify an endpoint, so "POST /x" is a new addition even when "GET /x" is already listed; an entry already listed with the same method is silently ignored. Endpoints cannot be removed from here. The endpoint is probed for HTTP 402 with the declared method after ownership verification. Also accepted as one newline-separated string.
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+    PaymentRequired:
+      type: object
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
+      properties:
+        x402Version:
+          type: integer
+          enum:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
+          type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
+          properties:
+            url:
+              type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+  responses:
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 404
+              message: Service not found
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error

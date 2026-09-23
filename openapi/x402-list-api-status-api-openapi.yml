@@ -1,0 +1,246 @@
+openapi: 3.2.0
+info:
+  title: x402 List Status API
+  version: 1.0.0
+  description: Public REST API for x402-list.com - the directory of all services using the x402 protocol (HTTP 402 Payment Required).
+  contact:
+    name: x402 List
+    url: https://x402-list.com
+    email: info@x402-list.com
+  termsOfService: https://x402-list.com/terms
+  license:
+    name: MIT
+  x-data-license: CC-BY-4.0
+servers:
+- url: https://x402-list.com/api/v1
+  description: Production
+tags:
+- name: Status
+  description: Get a quick health overview of all monitored services
+paths:
+  /status:
+    get:
+      operationId: getStatus
+      summary: Global status summary
+      description: Returns aggregate status counts (online/degraded/offline/unknown) and per-service status with uptime and response time. Use this for a quick health overview of the x402 ecosystem.
+      tags:
+      - Status
+      responses:
+        '200':
+          description: Status summary with per-service breakdown
+          headers:
+            X-Meter-Remaining:
+              $ref: '#/components/headers/MeterRemaining'
+            X-Meter-Reset:
+              $ref: '#/components/headers/MeterReset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StatusSummary'
+                  provenance:
+                    $ref: '#/components/schemas/Provenance'
+        '402':
+          $ref: '#/components/responses/MeteredPaymentRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  schemas:
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
+    StatusSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        online:
+          type: integer
+        degraded:
+          type: integer
+        offline:
+          type: integer
+        unknown:
+          type: integer
+        services:
+          type: array
+          items:
+            type: object
+            properties:
+              slug:
+                type: string
+              name:
+                type: string
+              status:
+                type: string
+                enum:
+                - online
+                - degraded
+                - offline
+                - unknown
+              last_checked_at:
+                type:
+                - string
+                - 'null'
+                format: date-time
+              consecutive_failures:
+                type: integer
+                minimum: 0
+                description: Number of consecutive failed checks; 0 when the service is stable. Internal negative monitor sentinels are clamped to 0.
+              uptime_24h:
+                type:
+                - number
+                - 'null'
+                description: Uptime percentage over the latest daily snapshot; null = not yet monitored
+              avg_response_time_ms:
+                type:
+                - number
+                - 'null'
+    PaymentRequirements:
+      type: object
+      description: A single x402 payment option (one element of accepts[]).
+      properties:
+        scheme:
+          type: string
+          enum:
+          - exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        amount:
+          type: string
+          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
+          example: '500000'
+        payTo:
+          type: string
+          description: Receiving wallet address
+        maxTimeoutSeconds:
+          type: integer
+          example: 300
+        extra:
+          type: object
+          description: EIP-712 signing domain parameters
+          properties:
+            name:
+              type: string
+              example: USD Coin
+            version:
+              type: string
+              example: '2'
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+    PaymentRequired:
+      type: object
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
+      properties:
+        x402Version:
+          type: integer
+          enum:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
+          type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
+          properties:
+            url:
+              type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+  headers:
+    MeterRemaining:
+      schema:
+        type: integer
+      description: Free metered GET requests left today for this IP (see the metering note in the API description).
+    MeterReset:
+      schema:
+        type: integer
+      description: 'Unix timestamp (seconds) at which this IP''s free daily metered-GET quota resets: the next 00:00 UTC. Same shape as X-RateLimit-Reset. Lets a caller behind a shared egress IP tell when the per-IP quota rolls over.'
+  responses:
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
+    MeteredPaymentRequired:
+      description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
+      headers:
+        PAYMENT-REQUIRED:
+          schema:
+            type: string
+          description: base64 JSON of the x402 PaymentRequired object
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PaymentRequired'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error

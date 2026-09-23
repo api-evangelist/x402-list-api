@@ -1,0 +1,433 @@
+openapi: 3.2.0
+info:
+  title: x402 List Assess API
+  version: 1.0.0
+  description: Public REST API for x402-list.com - the directory of all services using the x402 protocol (HTTP 402 Payment Required).
+  contact:
+    name: x402 List
+    url: https://x402-list.com
+    email: info@x402-list.com
+  termsOfService: https://x402-list.com/terms
+  license:
+    name: MIT
+  x-data-license: CC-BY-4.0
+servers:
+- url: https://x402-list.com/api/v1
+  description: Production
+tags:
+- name: Assess
+  description: On-demand paid AI assessment of a service shortlist (x402)
+paths:
+  /assess:
+    post:
+      operationId: postAssess
+      summary: On-demand paid AI assessment of a service shortlist
+      description: 'Runs a FRESH flagship-LLM comparison of an already-assessed shortlist of services for a stated need, and charges x402 only for that fresh reasoning. It never charges to read an already-computed assessment (that stays free on the service detail). The report is a modular envelope: data carries one block per priced module (today the advisor answer under data.answer), and meta carries report_version and the modules_run list, so future modules are additive and never breaking. The paid flow is the standard x402 handshake: the first call (no PAYMENT-SIGNATURE) returns HTTP 402 with a PAYMENT-REQUIRED header and an accepts[] body (single option, $0.25 USDC on Base); sign the payment and retry the same request with a PAYMENT-SIGNATURE header. On success the 200 carries a PAYMENT-RESPONSE header. You may optionally include a probe target (probe { slug, endpoint_path? }) to also test one listed service live: after the fresh reasoning the server makes a real x402 payment to that endpoint and analyzes the response, and the single accepts[0] amount is then $0.25 plus that endpoint price X. The report then carries a probe_report block with a verdict plus truncated extracts (never the verbatim third-party body). The probe is only offered when live probing is armed, and probe fees are non-refundable regardless of outcome. If the fresh run cannot be produced (an unresolvable shortlist or a model miss) the endpoint answers 503 BEFORE settling, so the caller is never charged. When the payment layer or the on-demand assessment feature is not configured, the endpoint answers 503. There is NO refund. This endpoint is agent-first (JSON only).'
+      tags:
+      - Assess
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssessRequest'
+            example:
+              question: Which of these is the cheapest reliable weather API for a high-volume agent?
+              services:
+              - weather-x402
+              - forecast-api
+              - meteo-402
+      responses:
+        '200':
+          description: The modular assessment report. data.answer is the AI-marked recommendation; meta carries report_version and modules_run. The PAYMENT-RESPONSE header carries the settlement receipt.
+          headers:
+            PAYMENT-RESPONSE:
+              schema:
+                type: string
+              description: base64 JSON of the x402 SettleResponse (settlement receipt)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssessReport'
+                  meta:
+                    type: object
+                    properties:
+                      report_version:
+                        type: integer
+                        description: Report contract generation; bumps when the envelope or a module block shape changes.
+                      modules_run:
+                        type: array
+                        items:
+                          type: string
+                        description: Ids of the priced modules that ran (e.g. ["advisor"]).
+                  provenance:
+                    $ref: '#/components/schemas/Provenance'
+              example:
+                data:
+                  answer:
+                    question: Which of these is the cheapest reliable weather API for a high-volume agent?
+                    recommendation:
+                      value: 'weather-x402 fits best: lowest price and highest measured uptime of the three.'
+                      confidence: 0.72
+                      source: ai
+                    ranking:
+                    - slug: weather-x402
+                      reason: lowest price at $0.01 with 100% 24h uptime
+                    - slug: forecast-api
+                      reason: comparable reliability but a higher price tier
+                    model: glm-5.2
+                    prompt_version: f2-advisor-1
+                    candidates_considered: 3
+                    note: AI-generated from the measured signals of the listed services. Not an endorsement; verify pricing and payTo before paying.
+                meta:
+                  report_version: 1
+                  modules_run:
+                  - advisor
+        '400':
+          description: Validation error (question missing or too long, or services not a non-empty array of at most 8 valid slugs)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '402':
+          description: 'Payment required: pay accepts[0] ($0.25 USDC on Base) with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded. When the request includes a probe target and live probing is armed, the single accepts[0] amount is $0.25 plus the probed endpoint price X instead.'
+          headers:
+            PAYMENT-REQUIRED:
+              schema:
+                type: string
+              description: base64 JSON of the x402 PaymentRequired object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequired'
+              example:
+                x402Version: 2
+                accepts:
+                - scheme: exact
+                  network: eip155:8453
+                  asset: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+                  amount: '250000'
+                  payTo: '0x0000000000000000000000000000000000000000'
+                  maxTimeoutSeconds: 300
+                  extra:
+                    name: USD Coin
+                    version: '2'
+                resource:
+                  url: https://x402-list.com/api/v1/assess
+                  description: 'On-demand x402 List assessment: a fresh AI comparison of the requested services for your need'
+                  mimeType: application/json
+                  serviceName: x402 List
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: The payment layer or the on-demand assessment feature is not configured, so the endpoint is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
+    ProbeReport:
+      type: object
+      description: Live-probe result block (treno 4). The report of a real x402 payment to one listed service and an analysis of what it returned. It carries a verdict plus truncated evidence snippets and NEVER the verbatim third-party body. All *_atomic fields are atomic USDC (6-decimal integer strings), not dollars. Probe fees are non-refundable regardless of outcome.
+      properties:
+        version:
+          type: integer
+          description: probe_report block generation; bumps when this block shape changes.
+        outcome:
+          type: string
+          enum:
+          - settled
+          - price_drift
+          - endpoint_error
+          description: settled = paid and analyzed; price_drift = the live price moved above the quote, so nothing was paid; endpoint_error = paid but the endpoint failed or was unreadable.
+        settle_ok:
+          type: boolean
+          description: true only when the OUTBOUND probe payment settled on-chain (a tx_hash is present).
+        target:
+          type: object
+          description: The probed target.
+          properties:
+            slug:
+              type: string
+            endpoint_path:
+              type: string
+            network:
+              type: string
+              description: Canonical CAIP-2 network of the probed endpoint.
+        quoted_x_atomic:
+          type: string
+          description: Endpoint price X quoted at assessment time (atomic USDC string).
+        paid_atomic:
+          type: string
+          description: Atomic USDC actually sent to the endpoint ('0' when nothing was spent, e.g. on price_drift).
+        live_price_atomic:
+          type:
+          - string
+          - 'null'
+          description: Live endpoint price observed on the fresh 402 (atomic USDC string), or null when unreadable.
+        http_status:
+          type:
+          - integer
+          - 'null'
+          description: Endpoint HTTP status after payment, or null.
+        latency_ms:
+          type:
+          - integer
+          - 'null'
+        content_type:
+          type:
+          - string
+          - 'null'
+        size_bytes:
+          type:
+          - integer
+          - 'null'
+        schema_conformance:
+          type: string
+          enum:
+          - valid_json
+          - invalid_json
+          - non_json
+          - no_response
+          description: Deterministic verdict on the returned body from its declared content type and parseability.
+        ai_analysis:
+          description: AI verdict on what the endpoint returned, marked {value, confidence, source:'ai'}; null when the model missed or the key is unset. Fail-soft, and it never contains the verbatim body.
+          oneOf:
+          - type: object
+            properties:
+              value:
+                type: string
+              confidence:
+                type: number
+                description: 0-1
+              source:
+                type: string
+                enum:
+                - ai
+          - type: 'null'
+        extracts:
+          type: array
+          items:
+            type: string
+          description: Up to 3 truncated evidence snippets (each hard-capped); NEVER the verbatim third-party body.
+        tx_hash:
+          type:
+          - string
+          - 'null'
+          description: On-chain settlement tx hash of the outbound probe payment, or null when nothing settled.
+        note:
+          type: string
+          description: 'Policy note: charged $0.25 plus X, non-refundable regardless of outcome, snippets truncated, full response never resold.'
+    AssessAnswer:
+      type: object
+      description: The AI-marked recommendation over the shortlist (family 10 advisor). AI-derived; not an endorsement, and it never overrides a measured value.
+      properties:
+        question:
+          type: string
+        recommendation:
+          type: object
+          properties:
+            value:
+              type: string
+              description: One plain-language paragraph answering the need
+            confidence:
+              type: number
+              description: '0-1: how strongly the signals support the recommendation'
+            source:
+              type: string
+              enum:
+              - ai
+        ranking:
+          type: array
+          description: Candidates ordered best-first for the need; only slugs from the request appear (the model can never introduce one).
+          items:
+            type: object
+            properties:
+              slug:
+                type: string
+              reason:
+                type: string
+        model:
+          type: string
+        prompt_version:
+          type: string
+        candidates_considered:
+          type: integer
+        note:
+          type: string
+          description: Honest, evidence-based disclaimer.
+    AssessReport:
+      type: object
+      description: 'The modular assessment report body: one block per priced module. It always carries the advisor answer under answer; a probe_report block is added when a live probe ran. Future modules add their own block additively.'
+      properties:
+        answer:
+          $ref: '#/components/schemas/AssessAnswer'
+        probe_report:
+          description: Present only when a live probe ran (the request carried a probe target and live probing was armed). The truncated probe result; never the verbatim third-party body.
+          oneOf:
+          - $ref: '#/components/schemas/ProbeReport'
+          - type: 'null'
+    AssessRequest:
+      type: object
+      required:
+      - question
+      - services
+      description: 'On-demand assessment request: a need plus the shortlist of service slugs to compare for it.'
+      properties:
+        question:
+          type: string
+          maxLength: 1000
+          description: The need to assess the shortlist against (1 to 1000 characters).
+        services:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 8
+          description: Service slugs to compare (1 to 8, de-duplicated, order kept).
+        probe:
+          type: object
+          description: 'Optional live-probe target: also pay one listed service for real and analyze what it returns. When live probing is armed the single accepts[0] amount becomes $0.25 plus that endpoint price X, and the report gains a probe_report block; probe fees are non-refundable regardless of outcome. Ignored (advisor-only) when live probing is not armed.'
+          required:
+          - slug
+          properties:
+            slug:
+              type: string
+              description: Slug of one listed service to probe live.
+            endpoint_path:
+              type: string
+              maxLength: 500
+              description: Optional URL path on that service to probe, beginning with '/'. Omit to let the server pick the cheapest priced USDC-on-Base endpoint. Templated paths (with {param} or :param placeholders) cannot be probed live and are excluded from probing.
+    PaymentRequirements:
+      type: object
+      description: A single x402 payment option (one element of accepts[]).
+      properties:
+        scheme:
+          type: string
+          enum:
+          - exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        amount:
+          type: string
+          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
+          example: '500000'
+        payTo:
+          type: string
+          description: Receiving wallet address
+        maxTimeoutSeconds:
+          type: integer
+          example: 300
+        extra:
+          type: object
+          description: EIP-712 signing domain parameters
+          properties:
+            name:
+              type: string
+              example: USD Coin
+            version:
+              type: string
+              example: '2'
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+    PaymentRequired:
+      type: object
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
+      properties:
+        x402Version:
+          type: integer
+          enum:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
+          type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
+          properties:
+            url:
+              type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+  responses:
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error

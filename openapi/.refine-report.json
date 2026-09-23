@@ -1,0 +1,40 @@
+{
+  "provider": "x402-list-api",
+  "sources": [
+    "_original/x402-list-api-openapi.json"
+  ],
+  "outputs": [
+    "x402-list-api-assess-api-openapi.yml",
+    "x402-list-api-changes-api-openapi.yml",
+    "x402-list-api-checks-api-openapi.yml",
+    "x402-list-api-facilitators-api-openapi.yml",
+    "x402-list-api-recommender-api-openapi.yml",
+    "x402-list-api-reference-api-openapi.yml",
+    "x402-list-api-services-api-openapi.yml",
+    "x402-list-api-stats-api-openapi.yml",
+    "x402-list-api-status-api-openapi.yml",
+    "x402-list-api-submissions-api-openapi.yml",
+    "x402-list-api-suggestions-api-openapi.yml"
+  ],
+  "archived": [],
+  "errors": [],
+  "warnings": [],
+  "notes": [
+    "sourced from openapi/_original/ (1 archived document(s)); previously refined output at the top level was skipped rather than re-split",
+    "x402-list-api-openapi.json: upgraded openapi 3.1.0 -> OpenAPI 3.2.0",
+    "apis.yml register: already-registered"
+  ],
+  "skipped": [
+    "x402-list-api-assess-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "x402-list-api-changes-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "x402-list-api-checks-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "x402-list-api-facilitators-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "x402-list-api-recommender-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "x402-list-api-reference-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "x402-list-api-services-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "x402-list-api-stats-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "x402-list-api-status-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "x402-list-api-submissions-api-openapi.yml: previously refined output, superseded by openapi/_original/",
+    "x402-list-api-suggestions-api-openapi.yml: previously refined output, superseded by openapi/_original/"
+  ]
+}

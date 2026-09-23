@@ -1,0 +1,441 @@
+openapi: 3.2.0
+info:
+  title: x402 List Changes API
+  version: 1.0.0
+  description: Public REST API for x402-list.com - the directory of all services using the x402 protocol (HTTP 402 Payment Required).
+  contact:
+    name: x402 List
+    url: https://x402-list.com
+    email: info@x402-list.com
+  termsOfService: https://x402-list.com/terms
+  license:
+    name: MIT
+  x-data-license: CC-BY-4.0
+servers:
+- url: https://x402-list.com/api/v1
+  description: Production
+tags:
+- name: Changes
+  description: 'Change events detected on the live x402 wire: payTo rotations, price moves, and schema changes'
+paths:
+  /changes:
+    get:
+      operationId: listServiceChanges
+      summary: Feed of service change events
+      description: 'Returns change events detected on the live x402 wire: a payTo (settlement address) rotation, a price move, or a schema change (endpoints, networks, assets, or protocol version added or removed). Each event is diffed from the ENTIRE accepts[] a service returns on every probe, so a payTo rotation at an unchanged price - invisible to price-only tracking - shows up here. Newest first, over a rolling window (days). Events are retained perpetually; the window only bounds the feed. meta.type_counts breaks the window down by event type and meta.window_total gives the events in it, so ONE call returns all four figures (before, the breakdown took a filtered call per type plus one more for the total). Both cover the whole window: they are scoped by days and by the service filter, but NOT by the type filter. So with ?type=price_changed, meta.total counts the filtered feed you are paging while meta.type_counts still reports every type; the two are meant to differ. Each type in the enum is always present, 0 included, and type_counts sums to meta.window_total while every event carries one of the enum types; a type not yet in the enum still counts toward window_total but into no bucket.'
+      tags:
+      - Changes
+      parameters:
+      - name: service
+        in: query
+        schema:
+          type: string
+        description: Filter to a single service by slug.
+      - name: type
+        in: query
+        schema:
+          type: string
+          enum:
+          - payto_changed
+          - price_changed
+          - schema_changed
+        description: Filter by event type. A value outside the enum returns 400 Bad Request.
+      - name: days
+        in: query
+        schema:
+          type: integer
+          default: 90
+          minimum: 1
+          maximum: 365
+        description: Rolling window in days (clamped to 1-365).
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+          minimum: 1
+        description: Page number
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          default: 25
+          minimum: 1
+          maximum: 100
+        description: Results per page
+      responses:
+        '200':
+          description: Paginated feed of change events, newest first
+          headers:
+            X-Meter-Remaining:
+              $ref: '#/components/headers/MeterRemaining'
+            X-Meter-Reset:
+              $ref: '#/components/headers/MeterReset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceChangeEvent'
+                  meta:
+                    allOf:
+                    - $ref: '#/components/schemas/PaginationMeta'
+                    - type: object
+                      properties:
+                        days:
+                          type: integer
+                          description: Rolling window in days applied to this feed
+                        type_counts:
+                          type: object
+                          description: Events per type over the whole window, scoped by days and by the service filter but NOT by the type filter. Every type in the enum is present, 0 included, so an absent type and a type with no events are never confused.
+                          properties:
+                            payto_changed:
+                              type: integer
+                            price_changed:
+                              type: integer
+                            schema_changed:
+                              type: integer
+                        window_total:
+                          type: integer
+                          description: Events in the whole window, ignoring the type filter. Equals meta.total when no type filter is set. It equals the sum of type_counts while every event carries one of the enum types; a type not yet in the enum is counted here but in no bucket.
+                  provenance:
+                    $ref: '#/components/schemas/Provenance'
+              example:
+                data:
+                - slug: acme-generate
+                  name: Acme Generate
+                  type: payto_changed
+                  observed_at: '2026-07-24T09:12:00.000Z'
+                  summary:
+                    payToAdded:
+                    - 0x1111…1111
+                    payToRemoved:
+                    - 0x2222…2222
+                  old_snapshot:
+                  - endpoint: GET /v1/generate
+                    scheme: exact
+                    network: eip155:8453
+                    asset: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+                    assetName: USDC
+                    payTo: 0x2222…2222
+                    price: '10000'
+                    mimeType: application/json
+                    x402Version: 2
+                  new_snapshot:
+                  - endpoint: GET /v1/generate
+                    scheme: exact
+                    network: eip155:8453
+                    asset: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+                    assetName: USDC
+                    payTo: 0x1111…1111
+                    price: '10000'
+                    mimeType: application/json
+                    x402Version: 2
+                meta:
+                  total: 1
+                  page: 1
+                  per_page: 25
+                  total_pages: 1
+                  days: 90
+                  type_counts:
+                    payto_changed: 1
+                    price_changed: 0
+                    schema_changed: 0
+                  window_total: 1
+        '400':
+          description: Invalid type filter (outside the accepted set)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '402':
+          $ref: '#/components/responses/MeteredPaymentRequired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  schemas:
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
+    ChangeSummary:
+      type: object
+      description: 'Precomputed diff for the event. Fields are populated per event type: payto_changed carries the payTo deltas, price_changed carries priceChanges, schema_changed carries the schema/endpoint deltas. An absent field means no change of that kind.'
+      properties:
+        payToAdded:
+          type: array
+          items:
+            type: string
+        payToRemoved:
+          type: array
+          items:
+            type: string
+        priceChanges:
+          type: array
+          items:
+            type: object
+            properties:
+              endpoint:
+                type: string
+              network:
+                type: string
+              assetName:
+                type: string
+              oldPrice:
+                type: string
+                description: Comma-joined distinct old prices under this endpoint/scheme/network/asset key
+              newPrice:
+                type: string
+                description: Comma-joined distinct new prices under the same key
+        endpointsAdded:
+          type: array
+          items:
+            type: string
+        endpointsRemoved:
+          type: array
+          items:
+            type: string
+        schemaAdded:
+          type: array
+          items:
+            type: string
+        schemaRemoved:
+          type: array
+          items:
+            type: string
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of results
+        page:
+          type: integer
+          description: Current page number
+        per_page:
+          type: integer
+          description: Results per page
+        total_pages:
+          type: integer
+          description: Total number of pages
+    ServiceChangeEvent:
+      type: object
+      description: A change detected on a service live 402 wire, joined to the service it belongs to.
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum:
+          - payto_changed
+          - price_changed
+          - schema_changed
+          description: 'What moved: payTo (settlement address) rotation, price move, or schema change.'
+        observed_at:
+          type: string
+          format: date-time
+        summary:
+          oneOf:
+          - $ref: '#/components/schemas/ChangeSummary'
+          - type: 'null'
+        old_snapshot:
+          type:
+          - array
+          - 'null'
+          items:
+            $ref: '#/components/schemas/CanonicalAccept'
+          description: Canonical accepts[] before the change; null on a first observation.
+        new_snapshot:
+          type:
+          - array
+          - 'null'
+          items:
+            $ref: '#/components/schemas/CanonicalAccept'
+          description: Canonical accepts[] after the change.
+    PaymentRequirements:
+      type: object
+      description: A single x402 payment option (one element of accepts[]).
+      properties:
+        scheme:
+          type: string
+          enum:
+          - exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        amount:
+          type: string
+          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
+          example: '500000'
+        payTo:
+          type: string
+          description: Receiving wallet address
+        maxTimeoutSeconds:
+          type: integer
+          example: 300
+        extra:
+          type: object
+          description: EIP-712 signing domain parameters
+          properties:
+            name:
+              type: string
+              example: USD Coin
+            version:
+              type: string
+              example: '2'
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+    PaymentRequired:
+      type: object
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
+      properties:
+        x402Version:
+          type: integer
+          enum:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
+          type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
+          properties:
+            url:
+              type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+    CanonicalAccept:
+      type: object
+      description: One canonical accepts[] entry captured from the live 402 wire, tied to the endpoint it was observed on. Field names are the stored snapshot shape (camelCase), passed through verbatim.
+      properties:
+        endpoint:
+          type: string
+          description: The probed endpoint as "METHOD /path"
+          example: GET /v1/generate
+        scheme:
+          type: string
+          example: exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address, verbatim
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        assetName:
+          type: string
+          example: USDC
+        payTo:
+          type: string
+          description: Receiving wallet address, verbatim (Solana base58 is case-significant, never lowercased)
+        price:
+          type: string
+          description: Atomic price as a string
+          example: '10000'
+        mimeType:
+          type:
+          - string
+          - 'null'
+        x402Version:
+          type:
+          - integer
+          - 'null'
+  headers:
+    MeterRemaining:
+      schema:
+        type: integer
+      description: Free metered GET requests left today for this IP (see the metering note in the API description).
+    MeterReset:
+      schema:
+        type: integer
+      description: 'Unix timestamp (seconds) at which this IP''s free daily metered-GET quota resets: the next 00:00 UTC. Same shape as X-RateLimit-Reset. Lets a caller behind a shared egress IP tell when the per-IP quota rolls over.'
+  responses:
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
+    MeteredPaymentRequired:
+      description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
+      headers:
+        PAYMENT-REQUIRED:
+          schema:
+            type: string
+          description: base64 JSON of the x402 PaymentRequired object
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PaymentRequired'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error
