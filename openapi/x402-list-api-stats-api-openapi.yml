@@ -102,6 +102,38 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 components:
+  responses:
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error
+    MeteredPaymentRequired:
+      description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
+      headers:
+        PAYMENT-REQUIRED:
+          schema:
+            type: string
+          description: base64 JSON of the x402 PaymentRequired object
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PaymentRequired'
   schemas:
     Provenance:
       type: object
@@ -129,6 +161,40 @@ components:
           format: uri
           description: Canonical site origin behind the directory.
           example: https://x402-list.com
+    PaymentRequired:
+      type: object
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
+      properties:
+        x402Version:
+          type: integer
+          enum:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
+          type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
+          properties:
+            url:
+              type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
     AggregateStats:
       type: object
       description: Aggregate statistics about the x402 ecosystem
@@ -326,78 +392,12 @@ components:
               type: integer
             message:
               type: string
-    PaymentRequired:
-      type: object
-      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
-      properties:
-        x402Version:
-          type: integer
-          enum:
-          - 2
-        accepts:
-          type: array
-          items:
-            $ref: '#/components/schemas/PaymentRequirements'
-        resource:
-          type: object
-          description: The paid resource this 402 guards (echoed by the x402 server).
-          properties:
-            url:
-              type: string
-              example: https://x402-list.com/api/v1/submit
-            description:
-              type: string
-              example: Resubmission fee after a rejected submission
-            mimeType:
-              type: string
-              example: application/json
-            serviceName:
-              type: string
-              example: x402 List
-        error:
-          type: string
-          description: App-level error code, e.g. resubmission_fee_required
-        message:
-          type: string
-          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
   headers:
-    MeterRemaining:
-      schema:
-        type: integer
-      description: Free metered GET requests left today for this IP (see the metering note in the API description).
     MeterReset:
       schema:
         type: integer
       description: 'Unix timestamp (seconds) at which this IP''s free daily metered-GET quota resets: the next 00:00 UTC. Same shape as X-RateLimit-Reset. Lets a caller behind a shared egress IP tell when the per-IP quota rolls over.'
-  responses:
-    RateLimited:
-      description: Rate limit exceeded
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 429
-              message: Too many requests. Please slow down.
-    MeteredPaymentRequired:
-      description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
-      headers:
-        PAYMENT-REQUIRED:
-          schema:
-            type: string
-          description: base64 JSON of the x402 PaymentRequired object
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/PaymentRequired'
-    InternalError:
-      description: Internal server error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 500
-              message: Internal server error
+    MeterRemaining:
+      schema:
+        type: integer
+      description: Free metered GET requests left today for this IP (see the metering note in the API description).

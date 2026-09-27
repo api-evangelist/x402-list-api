@@ -253,6 +253,29 @@ paths:
           $ref: '#/components/responses/InternalError'
 components:
   schemas:
+    FacilitatorPaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of facilitators
+        page:
+          type: integer
+          description: Current page number
+        per_page:
+          type: integer
+          description: Results per page
+        total_pages:
+          type: integer
+          description: Total number of pages
+        timeframe:
+          type: string
+          enum:
+          - 24h
+          - 7d
+          - 30d
+          - all
+          description: Window used to sort the results
     FacilitatorListItem:
       type: object
       description: A facilitator with independently on-chain-verified USDC volume across all measured chains. For USDC, USD volume equals token volume 1:1.
@@ -324,82 +347,6 @@ components:
           description: Per-(network,token) volume breakdown; present only when include=chains
           items:
             $ref: '#/components/schemas/FacilitatorChainBreakdown'
-    PaymentRequirements:
-      type: object
-      description: A single x402 payment option (one element of accepts[]).
-      properties:
-        scheme:
-          type: string
-          enum:
-          - exact
-        network:
-          type: string
-          description: CAIP-2 network id
-          example: eip155:8453
-        asset:
-          type: string
-          description: Token contract address
-          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
-        amount:
-          type: string
-          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
-          example: '500000'
-        payTo:
-          type: string
-          description: Receiving wallet address
-        maxTimeoutSeconds:
-          type: integer
-          example: 300
-        extra:
-          type: object
-          description: EIP-712 signing domain parameters
-          properties:
-            name:
-              type: string
-              example: USD Coin
-            version:
-              type: string
-              example: '2'
-    FacilitatorTimeseriesPoint:
-      type: object
-      description: One day of a facilitator on-chain volume series
-      properties:
-        date:
-          type: string
-          description: UTC day, YYYY-MM-DD
-          example: '2026-06-15'
-        volume_usd:
-          type: number
-          description: On-chain USDC volume that day (USD)
-        tx_count:
-          type: integer
-          description: Settlement transaction count that day
-    Provenance:
-      type: object
-      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
-      properties:
-        license:
-          type: string
-          enum:
-          - CC-BY-4.0
-          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
-        attribution_required:
-          type: boolean
-          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
-        attribution:
-          type: string
-          description: Ready-to-use attribution string to display when reusing this data.
-          example: 'Data: x402-list.com (CC BY 4.0)'
-        cite_as:
-          type: string
-          format: uri
-          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
-          example: https://x402-list.com/services/acme-generate
-        source:
-          type: string
-          format: uri
-          description: Canonical site origin behind the directory.
-          example: https://x402-list.com
     Error:
       type: object
       properties:
@@ -410,55 +357,6 @@ components:
               type: integer
             message:
               type: string
-    FacilitatorBuyers:
-      type: object
-      description: 'Per-chain distinct on-chain buyers (E3). total_upper_bound_30d is a declared UPPER BOUND: buyers on different chains or tokens are not de-duplicated, and each per-chain figure sums daily distinct counts. Prefer the per-chain figures.'
-      properties:
-        by_chain:
-          type: array
-          items:
-            type: object
-            properties:
-              network:
-                type: string
-                description: Chain identifier as configured
-              network_caip2:
-                type:
-                - string
-                - 'null'
-                description: Canonical CAIP-2 identifier; null when the raw chain id is not recognized
-              unique_buyers_30d:
-                type: integer
-                description: Distinct buyers on this chain over the trailing 30 days (sum of daily distinct counts)
-        total_upper_bound_30d:
-          type: integer
-          description: 'Straight sum of the per-chain figures: a strict upper bound, not an exact head count'
-        caveat:
-          type: string
-          description: Mandatory in-band note declaring why the total is an upper bound
-    FacilitatorPaginationMeta:
-      type: object
-      properties:
-        total:
-          type: integer
-          description: Total number of facilitators
-        page:
-          type: integer
-          description: Current page number
-        per_page:
-          type: integer
-          description: Results per page
-        total_pages:
-          type: integer
-          description: Total number of pages
-        timeframe:
-          type: string
-          enum:
-          - 24h
-          - 7d
-          - 30d
-          - all
-          description: Window used to sort the results
     FacilitatorDetailChain:
       type: object
       description: A facilitator volume on one (network, token), as served on the detail node. Same shape as FacilitatorChainBreakdown plus first_activity_at (C3).
@@ -521,6 +419,66 @@ components:
           - on-chain
           - listed
           description: '"on-chain" if measured volume > 0 on this chain, else "listed"'
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
+    PaymentRequired:
+      type: object
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
+      properties:
+        x402Version:
+          type: integer
+          enum:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
+          type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
+          properties:
+            url:
+              type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
     FacilitatorChainBreakdown:
       type: object
       description: A facilitator volume on one (network, token). "on-chain" rows carry measured volume; "listed" rows are declared-but-not-yet-measured chains.
@@ -577,117 +535,20 @@ components:
           - on-chain
           - listed
           description: '"on-chain" if measured volume > 0 on this chain, else "listed"'
-    FacilitatorListedServices:
+    FacilitatorTimeseriesPoint:
       type: object
-      description: 'The facilitator -> listed-services bridge (D2 + C1): which directory services have settled on-chain via this facilitator. Volume is the service 30d figure over its payout mapping (a conservative floor); a service sharing a payout address is counted at the address level here (not re-divided pro-quota, since the split is per-service, not per-facilitator).'
+      description: One day of a facilitator on-chain volume series
       properties:
-        all_time_count:
-          type:
-          - integer
-          - 'null'
-          description: Distinct listed services that settled via this facilitator over all history; null until the hourly precompute records it (never a fabricated 0).
-        active_count_30d:
+        date:
+          type: string
+          description: UTC day, YYYY-MM-DD
+          example: '2026-06-15'
+        volume_usd:
+          type: number
+          description: On-chain USDC volume that day (USD)
+        tx_count:
           type: integer
-          description: Listed services with an attributed settlement via this facilitator over the trailing 30 days
-        top:
-          type: array
-          description: Top listed services by 30d volume (up to 10), link-able by slug
-          items:
-            type: object
-            properties:
-              slug:
-                type: string
-              name:
-                type: string
-              status:
-                type: string
-                enum:
-                - online
-                - degraded
-                - offline
-                - unknown
-              volume_usd_30d:
-                type: number
-                description: Service 30d settlement volume over its payout mapping (USD)
-              tx_count_30d:
-                type: number
-                description: Service 30d settlement count
-        caveat:
-          type: string
-          description: 'In-band note: shared/address-level attribution and the null all-time-count until precompute'
-    FacilitatorSettler:
-      type: object
-      description: An enabled on-chain settler address (EOA) for this facilitator.
-      properties:
-        address:
-          type: string
-          description: Settler EOA address
-        network:
-          type: string
-          description: Chain identifier as configured
-        network_caip2:
-          type:
-          - string
-          - 'null'
-          description: Canonical CAIP-2 identifier; null when the raw chain id is not recognized
-        source:
-          type:
-          - string
-          - 'null'
-          description: How the settler address was discovered (e.g. x402scan, submitted)
-        last_seen_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-          description: Most recent time this settler was observed settling
-        token_name:
-          type:
-          - string
-          - 'null'
-          description: Settlement token label on this chain (e.g. USDC)
-        token_decimals:
-          type:
-          - integer
-          - 'null'
-          description: Settlement token decimals
-        enabled:
-          type: boolean
-          description: Whether the settler is currently enabled for measurement
-    PaymentRequired:
-      type: object
-      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
-      properties:
-        x402Version:
-          type: integer
-          enum:
-          - 2
-        accepts:
-          type: array
-          items:
-            $ref: '#/components/schemas/PaymentRequirements'
-        resource:
-          type: object
-          description: The paid resource this 402 guards (echoed by the x402 server).
-          properties:
-            url:
-              type: string
-              example: https://x402-list.com/api/v1/submit
-            description:
-              type: string
-              example: Resubmission fee after a rejected submission
-            mimeType:
-              type: string
-              example: application/json
-            serviceName:
-              type: string
-              example: x402 List
-        error:
-          type: string
-          description: App-level error code, e.g. resubmission_fee_required
-        message:
-          type: string
-          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+          description: Settlement transaction count that day
     FacilitatorDetail:
       type: object
       description: Full detail for a single facilitator (TRENO A D5). Carries the list-row fields plus avg $/settlement, a 7d-vs-previous-7d trend, per-chain buyers (an upper bound), the per-(network,token) chains breakdown with first_activity_at, the on-chain settlers, the daily series (honoring period=all), and the listed_services bridge.
@@ -775,6 +636,145 @@ components:
         caveat:
           type: string
           description: 'In-band caveat: a measured floor, the avg/trend semantics, and the 24h today-so-far note.'
+    FacilitatorListedServices:
+      type: object
+      description: 'The facilitator -> listed-services bridge (D2 + C1): which directory services have settled on-chain via this facilitator. Volume is the service 30d figure over its payout mapping (a conservative floor); a service sharing a payout address is counted at the address level here (not re-divided pro-quota, since the split is per-service, not per-facilitator).'
+      properties:
+        all_time_count:
+          type:
+          - integer
+          - 'null'
+          description: Distinct listed services that settled via this facilitator over all history; null until the hourly precompute records it (never a fabricated 0).
+        active_count_30d:
+          type: integer
+          description: Listed services with an attributed settlement via this facilitator over the trailing 30 days
+        top:
+          type: array
+          description: Top listed services by 30d volume (up to 10), link-able by slug
+          items:
+            type: object
+            properties:
+              slug:
+                type: string
+              name:
+                type: string
+              status:
+                type: string
+                enum:
+                - online
+                - degraded
+                - offline
+                - unknown
+              volume_usd_30d:
+                type: number
+                description: Service 30d settlement volume over its payout mapping (USD)
+              tx_count_30d:
+                type: number
+                description: Service 30d settlement count
+        caveat:
+          type: string
+          description: 'In-band note: shared/address-level attribution and the null all-time-count until precompute'
+    FacilitatorBuyers:
+      type: object
+      description: 'Per-chain distinct on-chain buyers (E3). total_upper_bound_30d is a declared UPPER BOUND: buyers on different chains or tokens are not de-duplicated, and each per-chain figure sums daily distinct counts. Prefer the per-chain figures.'
+      properties:
+        by_chain:
+          type: array
+          items:
+            type: object
+            properties:
+              network:
+                type: string
+                description: Chain identifier as configured
+              network_caip2:
+                type:
+                - string
+                - 'null'
+                description: Canonical CAIP-2 identifier; null when the raw chain id is not recognized
+              unique_buyers_30d:
+                type: integer
+                description: Distinct buyers on this chain over the trailing 30 days (sum of daily distinct counts)
+        total_upper_bound_30d:
+          type: integer
+          description: 'Straight sum of the per-chain figures: a strict upper bound, not an exact head count'
+        caveat:
+          type: string
+          description: Mandatory in-band note declaring why the total is an upper bound
+    PaymentRequirements:
+      type: object
+      description: A single x402 payment option (one element of accepts[]).
+      properties:
+        scheme:
+          type: string
+          enum:
+          - exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        amount:
+          type: string
+          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
+          example: '500000'
+        payTo:
+          type: string
+          description: Receiving wallet address
+        maxTimeoutSeconds:
+          type: integer
+          example: 300
+        extra:
+          type: object
+          description: EIP-712 signing domain parameters
+          properties:
+            name:
+              type: string
+              example: USD Coin
+            version:
+              type: string
+              example: '2'
+    FacilitatorSettler:
+      type: object
+      description: An enabled on-chain settler address (EOA) for this facilitator.
+      properties:
+        address:
+          type: string
+          description: Settler EOA address
+        network:
+          type: string
+          description: Chain identifier as configured
+        network_caip2:
+          type:
+          - string
+          - 'null'
+          description: Canonical CAIP-2 identifier; null when the raw chain id is not recognized
+        source:
+          type:
+          - string
+          - 'null'
+          description: How the settler address was discovered (e.g. x402scan, submitted)
+        last_seen_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Most recent time this settler was observed settling
+        token_name:
+          type:
+          - string
+          - 'null'
+          description: Settlement token label on this chain (e.g. USDC)
+        token_decimals:
+          type:
+          - integer
+          - 'null'
+          description: Settlement token decimals
+        enabled:
+          type: boolean
+          description: Whether the settler is currently enabled for measurement
   headers:
     MeterRemaining:
       schema:
@@ -795,16 +795,6 @@ components:
             error:
               code: 429
               message: Too many requests. Please slow down.
-    NotFound:
-      description: Resource not found
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 404
-              message: Service not found
     InternalError:
       description: Internal server error
       content:
@@ -826,3 +816,13 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/PaymentRequired'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 404
+              message: Service not found

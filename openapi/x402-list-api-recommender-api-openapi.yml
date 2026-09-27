@@ -166,6 +166,25 @@ paths:
           $ref: '#/components/responses/InternalError'
 components:
   schemas:
+    FacilitatorContext:
+      type: object
+      description: 'Ecosystem facilitator context (NOT per-service): top facilitators by 7d settlement volume with a two-state verification flag.'
+      properties:
+        facilitator_id:
+          type: string
+        name:
+          type: string
+        volume_usd_7d:
+          type: number
+          description: decimal US dollars
+        tx_count_7d:
+          type: integer
+        verification:
+          type: string
+          enum:
+          - on-chain
+          - listed
+          description: '"on-chain" iff observed on-chain volume greater than zero, else "listed"'
     Provenance:
       type: object
       description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
@@ -192,87 +211,6 @@ components:
           format: uri
           description: Canonical site origin behind the directory.
           example: https://x402-list.com
-    FacilitatorContext:
-      type: object
-      description: 'Ecosystem facilitator context (NOT per-service): top facilitators by 7d settlement volume with a two-state verification flag.'
-      properties:
-        facilitator_id:
-          type: string
-        name:
-          type: string
-        volume_usd_7d:
-          type: number
-          description: decimal US dollars
-        tx_count_7d:
-          type: integer
-        verification:
-          type: string
-          enum:
-          - on-chain
-          - listed
-          description: '"on-chain" iff observed on-chain volume greater than zero, else "listed"'
-    BestResult:
-      type: object
-      description: 'The GET /best data block: ranked recommendations plus the ranking basis, danger-excluded slugs, and optional facilitator context.'
-      properties:
-        recommendations:
-          type: array
-          items:
-            $ref: '#/components/schemas/BestRecommendation'
-        ranking_basis:
-          type: string
-          description: Plain-language description of how the ranking was produced (the two-stage relevance-then-quality blend).
-        excluded_danger:
-          type: array
-          items:
-            type: string
-          description: Slugs removed from the recommendation set by a deterministic danger flag (blocklist or impersonation match only).
-        facilitator_context:
-          description: Top facilitators by 7d settlement volume when include_facilitator_context=true, otherwise null.
-          oneOf:
-          - type: array
-            items:
-              $ref: '#/components/schemas/FacilitatorContext'
-          - type: 'null'
-        note:
-          type: string
-          description: Present only when no service matched the given filters.
-    PaymentRequirements:
-      type: object
-      description: A single x402 payment option (one element of accepts[]).
-      properties:
-        scheme:
-          type: string
-          enum:
-          - exact
-        network:
-          type: string
-          description: CAIP-2 network id
-          example: eip155:8453
-        asset:
-          type: string
-          description: Token contract address
-          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
-        amount:
-          type: string
-          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
-          example: '500000'
-        payTo:
-          type: string
-          description: Receiving wallet address
-        maxTimeoutSeconds:
-          type: integer
-          example: 300
-        extra:
-          type: object
-          description: EIP-712 signing domain parameters
-          properties:
-            name:
-              type: string
-              example: USD Coin
-            version:
-              type: string
-              example: '2'
     BestRecommendation:
       type: object
       description: One ranked service recommendation from GET /best. All *_usd fields are decimal US dollars.
@@ -412,16 +350,6 @@ components:
         why:
           type: string
           description: Short human-readable rationale
-    Error:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code:
-              type: integer
-            message:
-              type: string
     PaymentRequired:
       type: object
       description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
@@ -456,16 +384,89 @@ components:
         message:
           type: string
           description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
-  headers:
-    MeterRemaining:
-      schema:
-        type: integer
-      description: Free metered GET requests left today for this IP (see the metering note in the API description).
-    MeterReset:
-      schema:
-        type: integer
-      description: 'Unix timestamp (seconds) at which this IP''s free daily metered-GET quota resets: the next 00:00 UTC. Same shape as X-RateLimit-Reset. Lets a caller behind a shared egress IP tell when the per-IP quota rolls over.'
+    BestResult:
+      type: object
+      description: 'The GET /best data block: ranked recommendations plus the ranking basis, danger-excluded slugs, and optional facilitator context.'
+      properties:
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/BestRecommendation'
+        ranking_basis:
+          type: string
+          description: Plain-language description of how the ranking was produced (the two-stage relevance-then-quality blend).
+        excluded_danger:
+          type: array
+          items:
+            type: string
+          description: Slugs removed from the recommendation set by a deterministic danger flag (blocklist or impersonation match only).
+        facilitator_context:
+          description: Top facilitators by 7d settlement volume when include_facilitator_context=true, otherwise null.
+          oneOf:
+          - type: array
+            items:
+              $ref: '#/components/schemas/FacilitatorContext'
+          - type: 'null'
+        note:
+          type: string
+          description: Present only when no service matched the given filters.
+    PaymentRequirements:
+      type: object
+      description: A single x402 payment option (one element of accepts[]).
+      properties:
+        scheme:
+          type: string
+          enum:
+          - exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        amount:
+          type: string
+          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
+          example: '500000'
+        payTo:
+          type: string
+          description: Receiving wallet address
+        maxTimeoutSeconds:
+          type: integer
+          example: 300
+        extra:
+          type: object
+          description: EIP-712 signing domain parameters
+          properties:
+            name:
+              type: string
+              example: USD Coin
+            version:
+              type: string
+              example: '2'
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
   responses:
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error
     RateLimited:
       description: Rate limit exceeded
       content:
@@ -487,13 +488,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/PaymentRequired'
-    InternalError:
-      description: Internal server error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 500
-              message: Internal server error
+  headers:
+    MeterReset:
+      schema:
+        type: integer
+      description: 'Unix timestamp (seconds) at which this IP''s free daily metered-GET quota resets: the next 00:00 UTC. Same shape as X-RateLimit-Reset. Lets a caller behind a shared egress IP tell when the per-IP quota rolls over.'
+    MeterRemaining:
+      schema:
+        type: integer
+      description: Free metered GET requests left today for this IP (see the metering note in the API description).

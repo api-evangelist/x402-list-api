@@ -2,6 +2,22 @@ name: x402 List API
 description: An open, machine-readable, live-monitored directory of services that accept x402 protocol payments
   (HTTP 402 Payment Required). Self-described as agent-first, it exposes service listings, uptime metrics, pricing,
   facilitator settlement data, and rankings as JSON for autonomous agents, aggregators, and integrations.
+deliveryModel:
+  model: saas
+  license_evidence:
+    not_product:
+    - mcccsm/x402-list-mcp
+  open_source: unknown
+  commercial: true
+  callable_host: true
+  label: Hosted service · you call their endpoint
+  confidence: low
+  source:
+  - openapi
+  - pricing
+  - repository-not-product
+  generated: '2026-09-25'
+  method: derived
 image: https://x402-list.com/og-image.png
 url: https://raw.githubusercontent.com/api-evangelist/x402-list-api/refs/heads/main/apis.yml
 created: '2026-09-02'
