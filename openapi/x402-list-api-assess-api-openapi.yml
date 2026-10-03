@@ -131,95 +131,41 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 components:
-  responses:
-    RateLimited:
-      description: Rate limit exceeded
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 429
-              message: Too many requests. Please slow down.
-    InternalError:
-      description: Internal server error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 500
-              message: Internal server error
   schemas:
-    AssessRequest:
+    PaymentRequired:
       type: object
-      required:
-      - question
-      - services
-      description: 'On-demand assessment request: a need plus the shortlist of service slugs to compare for it.'
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
       properties:
-        question:
-          type: string
-          maxLength: 1000
-          description: The need to assess the shortlist against (1 to 1000 characters).
-        services:
+        x402Version:
+          type: integer
+          enum:
+          - 2
+        accepts:
           type: array
           items:
-            type: string
-          minItems: 1
-          maxItems: 8
-          description: Service slugs to compare (1 to 8, de-duplicated, order kept).
-        probe:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
           type: object
-          description: 'Optional live-probe target: also pay one listed service for real and analyze what it returns. When live probing is armed the single accepts[0] amount becomes $0.25 plus that endpoint price X, and the report gains a probe_report block; probe fees are non-refundable regardless of outcome. Ignored (advisor-only) when live probing is not armed.'
-          required:
-          - slug
+          description: The paid resource this 402 guards (echoed by the x402 server).
           properties:
-            slug:
+            url:
               type: string
-              description: Slug of one listed service to probe live.
-            endpoint_path:
+              example: https://x402-list.com/api/v1/submit
+            description:
               type: string
-              maxLength: 500
-              description: Optional URL path on that service to probe, beginning with '/'. Omit to let the server pick the cheapest priced USDC-on-Base endpoint. Templated paths (with {param} or :param placeholders) cannot be probed live and are excluded from probing.
-    PaymentRequirements:
-      type: object
-      description: A single x402 payment option (one element of accepts[]).
-      properties:
-        scheme:
-          type: string
-          enum:
-          - exact
-        network:
-          type: string
-          description: CAIP-2 network id
-          example: eip155:8453
-        asset:
-          type: string
-          description: Token contract address
-          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
-        amount:
-          type: string
-          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
-          example: '500000'
-        payTo:
-          type: string
-          description: Receiving wallet address
-        maxTimeoutSeconds:
-          type: integer
-          example: 300
-        extra:
-          type: object
-          description: EIP-712 signing domain parameters
-          properties:
-            name:
+              example: Resubmission fee after a rejected submission
+            mimeType:
               type: string
-              example: USD Coin
-            version:
+              example: application/json
+            serviceName:
               type: string
-              example: '2'
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
     Provenance:
       type: object
       description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
@@ -387,40 +333,6 @@ components:
         note:
           type: string
           description: Honest, evidence-based disclaimer.
-    PaymentRequired:
-      type: object
-      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
-      properties:
-        x402Version:
-          type: integer
-          enum:
-          - 2
-        accepts:
-          type: array
-          items:
-            $ref: '#/components/schemas/PaymentRequirements'
-        resource:
-          type: object
-          description: The paid resource this 402 guards (echoed by the x402 server).
-          properties:
-            url:
-              type: string
-              example: https://x402-list.com/api/v1/submit
-            description:
-              type: string
-              example: Resubmission fee after a rejected submission
-            mimeType:
-              type: string
-              example: application/json
-            serviceName:
-              type: string
-              example: x402 List
-        error:
-          type: string
-          description: App-level error code, e.g. resubmission_fee_required
-        message:
-          type: string
-          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
     Error:
       type: object
       properties:
@@ -431,3 +343,91 @@ components:
               type: integer
             message:
               type: string
+    AssessRequest:
+      type: object
+      required:
+      - question
+      - services
+      description: 'On-demand assessment request: a need plus the shortlist of service slugs to compare for it.'
+      properties:
+        question:
+          type: string
+          maxLength: 1000
+          description: The need to assess the shortlist against (1 to 1000 characters).
+        services:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 8
+          description: Service slugs to compare (1 to 8, de-duplicated, order kept).
+        probe:
+          type: object
+          description: 'Optional live-probe target: also pay one listed service for real and analyze what it returns. When live probing is armed the single accepts[0] amount becomes $0.25 plus that endpoint price X, and the report gains a probe_report block; probe fees are non-refundable regardless of outcome. Ignored (advisor-only) when live probing is not armed.'
+          required:
+          - slug
+          properties:
+            slug:
+              type: string
+              description: Slug of one listed service to probe live.
+            endpoint_path:
+              type: string
+              maxLength: 500
+              description: Optional URL path on that service to probe, beginning with '/'. Omit to let the server pick the cheapest priced USDC-on-Base endpoint. Templated paths (with {param} or :param placeholders) cannot be probed live and are excluded from probing.
+    PaymentRequirements:
+      type: object
+      description: A single x402 payment option (one element of accepts[]).
+      properties:
+        scheme:
+          type: string
+          enum:
+          - exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        amount:
+          type: string
+          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
+          example: '500000'
+        payTo:
+          type: string
+          description: Receiving wallet address
+        maxTimeoutSeconds:
+          type: integer
+          example: 300
+        extra:
+          type: object
+          description: EIP-712 signing domain parameters
+          properties:
+            name:
+              type: string
+              example: USD Coin
+            version:
+              type: string
+              example: '2'
+  responses:
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error

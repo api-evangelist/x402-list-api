@@ -397,38 +397,121 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 components:
-  responses:
-    RateLimited:
-      description: Rate limit exceeded
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 429
-              message: Too many requests. Please slow down.
-    InternalError:
-      description: Internal server error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 500
-              message: Internal server error
-    NotFound:
-      description: Resource not found
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 404
-              message: Service not found
   schemas:
+    ServiceSubmissionRequest:
+      type: object
+      description: 'Service submission body: the default branch of POST /submit when "type" is omitted'
+      required:
+      - url
+      - email
+      - service_name
+      - description
+      - website_url
+      - category
+      - endpoints
+      properties:
+        type:
+          type: string
+          description: Optional submission type discriminator. Omit for services; any value other than "facilitator" is treated as a service submission.
+        url:
+          type: string
+          format: uri
+          description: Base URL of the x402 service. On a free compute host (vercel.app, workers.dev and similar) the endpoint answers HTTP 402 and the submission costs a one-off, non-refundable $1 USDC on Base; on static-only hosting or a dev tunnel it is rejected with HTTP 400 at any price
+        email:
+          type: string
+          format: email
+          description: Submitter contact email
+        service_name:
+          type: string
+          description: Human-readable name of the service
+        description:
+          type: string
+          description: Brief description of what the service does
+        website_url:
+          type: string
+          format: uri
+          description: Public website URL
+        category:
+          type: string
+          description: Service category (use /categories to get valid values)
+        endpoints:
+          type: array
+          items:
+            type: string
+          description: List of endpoint paths to probe (e.g. ["/v1/generate", "/v1/translate"])
+        notes:
+          type: string
+          description: Optional additional context
+    PaymentRequired:
+      type: object
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
+      properties:
+        x402Version:
+          type: integer
+          enum:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
+          type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
+          properties:
+            url:
+              type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
     PaymentRequirements:
       type: object
       description: A single x402 payment option (one element of accepts[]).
@@ -465,32 +548,6 @@ components:
             version:
               type: string
               example: '2'
-    Provenance:
-      type: object
-      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
-      properties:
-        license:
-          type: string
-          enum:
-          - CC-BY-4.0
-          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
-        attribution_required:
-          type: boolean
-          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
-        attribution:
-          type: string
-          description: Ready-to-use attribution string to display when reusing this data.
-          example: 'Data: x402-list.com (CC BY 4.0)'
-        cite_as:
-          type: string
-          format: uri
-          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
-          example: https://x402-list.com/services/acme-generate
-        source:
-          type: string
-          format: uri
-          description: Canonical site origin behind the directory.
-          example: https://x402-list.com
     ServiceUpdateRequest:
       type: object
       description: 'Owner update request body (F10). Send ALL fields prefilled with the live listing values: the server computes the diff and records only what actually changed. Empty or omitted fields are always treated as UNCHANGED (nothing can be cleared through this channel). Only declarative metadata is updatable; measured fields (verified, uptime, pricing, status, payTo) are read-only for everyone.'
@@ -596,91 +653,34 @@ components:
         notes:
           type: string
           description: Optional additional context
-    ServiceSubmissionRequest:
-      type: object
-      description: 'Service submission body: the default branch of POST /submit when "type" is omitted'
-      required:
-      - url
-      - email
-      - service_name
-      - description
-      - website_url
-      - category
-      - endpoints
-      properties:
-        type:
-          type: string
-          description: Optional submission type discriminator. Omit for services; any value other than "facilitator" is treated as a service submission.
-        url:
-          type: string
-          format: uri
-          description: Base URL of the x402 service. On a free compute host (vercel.app, workers.dev and similar) the endpoint answers HTTP 402 and the submission costs a one-off, non-refundable $1 USDC on Base; on static-only hosting or a dev tunnel it is rejected with HTTP 400 at any price
-        email:
-          type: string
-          format: email
-          description: Submitter contact email
-        service_name:
-          type: string
-          description: Human-readable name of the service
-        description:
-          type: string
-          description: Brief description of what the service does
-        website_url:
-          type: string
-          format: uri
-          description: Public website URL
-        category:
-          type: string
-          description: Service category (use /categories to get valid values)
-        endpoints:
-          type: array
-          items:
-            type: string
-          description: List of endpoint paths to probe (e.g. ["/v1/generate", "/v1/translate"])
-        notes:
-          type: string
-          description: Optional additional context
-    PaymentRequired:
-      type: object
-      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
-      properties:
-        x402Version:
-          type: integer
-          enum:
-          - 2
-        accepts:
-          type: array
-          items:
-            $ref: '#/components/schemas/PaymentRequirements'
-        resource:
-          type: object
-          description: The paid resource this 402 guards (echoed by the x402 server).
-          properties:
-            url:
-              type: string
-              example: https://x402-list.com/api/v1/submit
-            description:
-              type: string
-              example: Resubmission fee after a rejected submission
-            mimeType:
-              type: string
-              example: application/json
-            serviceName:
-              type: string
-              example: x402 List
-        error:
-          type: string
-          description: App-level error code, e.g. resubmission_fee_required
-        message:
-          type: string
-          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
-    Error:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code:
-              type: integer
-            message:
-              type: string
+  responses:
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 404
+              message: Service not found

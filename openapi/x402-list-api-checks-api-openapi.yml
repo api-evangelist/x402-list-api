@@ -72,65 +72,40 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 components:
-  responses:
-    RateLimited:
-      description: Rate limit exceeded
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 429
-              message: Too many requests. Please slow down.
-    InternalError:
-      description: Internal server error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 500
-              message: Internal server error
-    MeteredPaymentRequired:
-      description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
-      headers:
-        PAYMENT-REQUIRED:
-          schema:
-            type: string
-          description: base64 JSON of the x402 PaymentRequired object
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/PaymentRequired'
   schemas:
-    Provenance:
+    GlobalCheckEntry:
       type: object
-      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      description: A check entry with service info, for the global live feed
       properties:
-        license:
+        id:
+          type: string
+          format: uuid
+        checked_at:
+          type: string
+          format: date-time
+        is_up:
+          type: boolean
+        response_time_ms:
+          type:
+          - integer
+          - 'null'
+        status_code:
+          type:
+          - integer
+          - 'null'
+        endpoints_found:
+          type: integer
+        service_name:
+          type: string
+        service_slug:
+          type: string
+        service_status:
           type: string
           enum:
-          - CC-BY-4.0
-          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
-        attribution_required:
-          type: boolean
-          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
-        attribution:
-          type: string
-          description: Ready-to-use attribution string to display when reusing this data.
-          example: 'Data: x402-list.com (CC BY 4.0)'
-        cite_as:
-          type: string
-          format: uri
-          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
-          example: https://x402-list.com/services/acme-generate
-        source:
-          type: string
-          format: uri
-          description: Canonical site origin behind the directory.
-          example: https://x402-list.com
+          - online
+          - degraded
+          - offline
+          - unknown
     PaymentRequired:
       type: object
       description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
@@ -165,6 +140,42 @@ components:
         message:
           type: string
           description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
     PaymentRequirements:
       type: object
       description: A single x402 payment option (one element of accepts[]).
@@ -201,55 +212,44 @@ components:
             version:
               type: string
               example: '2'
-    GlobalCheckEntry:
-      type: object
-      description: A check entry with service info, for the global live feed
-      properties:
-        id:
-          type: string
-          format: uuid
-        checked_at:
-          type: string
-          format: date-time
-        is_up:
-          type: boolean
-        response_time_ms:
-          type:
-          - integer
-          - 'null'
-        status_code:
-          type:
-          - integer
-          - 'null'
-        endpoints_found:
-          type: integer
-        service_name:
-          type: string
-        service_slug:
-          type: string
-        service_status:
-          type: string
-          enum:
-          - online
-          - degraded
-          - offline
-          - unknown
-    Error:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code:
-              type: integer
-            message:
-              type: string
+  responses:
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
+    MeteredPaymentRequired:
+      description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
+      headers:
+        PAYMENT-REQUIRED:
+          schema:
+            type: string
+          description: base64 JSON of the x402 PaymentRequired object
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PaymentRequired'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error
   headers:
-    MeterReset:
-      schema:
-        type: integer
-      description: 'Unix timestamp (seconds) at which this IP''s free daily metered-GET quota resets: the next 00:00 UTC. Same shape as X-RateLimit-Reset. Lets a caller behind a shared egress IP tell when the per-IP quota rolls over.'
     MeterRemaining:
       schema:
         type: integer
       description: Free metered GET requests left today for this IP (see the metering note in the API description).
+    MeterReset:
+      schema:
+        type: integer
+      description: 'Unix timestamp (seconds) at which this IP''s free daily metered-GET quota resets: the next 00:00 UTC. Same shape as X-RateLimit-Reset. Lets a caller behind a shared egress IP tell when the per-IP quota rolls over.'
