@@ -166,51 +166,6 @@ paths:
           $ref: '#/components/responses/InternalError'
 components:
   schemas:
-    BestResult:
-      type: object
-      description: 'The GET /best data block: ranked recommendations plus the ranking basis, danger-excluded slugs, and optional facilitator context.'
-      properties:
-        recommendations:
-          type: array
-          items:
-            $ref: '#/components/schemas/BestRecommendation'
-        ranking_basis:
-          type: string
-          description: Plain-language description of how the ranking was produced (the two-stage relevance-then-quality blend).
-        excluded_danger:
-          type: array
-          items:
-            type: string
-          description: Slugs removed from the recommendation set by a deterministic danger flag (blocklist or impersonation match only).
-        facilitator_context:
-          description: Top facilitators by 7d settlement volume when include_facilitator_context=true, otherwise null.
-          oneOf:
-          - type: array
-            items:
-              $ref: '#/components/schemas/FacilitatorContext'
-          - type: 'null'
-        note:
-          type: string
-          description: Present only when no service matched the given filters.
-    FacilitatorContext:
-      type: object
-      description: 'Ecosystem facilitator context (NOT per-service): top facilitators by 7d settlement volume with a two-state verification flag.'
-      properties:
-        facilitator_id:
-          type: string
-        name:
-          type: string
-        volume_usd_7d:
-          type: number
-          description: decimal US dollars
-        tx_count_7d:
-          type: integer
-        verification:
-          type: string
-          enum:
-          - on-chain
-          - listed
-          description: '"on-chain" iff observed on-chain volume greater than zero, else "listed"'
     PaymentRequired:
       type: object
       description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
@@ -245,78 +200,25 @@ components:
         message:
           type: string
           description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
-    Provenance:
+    FacilitatorContext:
       type: object
-      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      description: 'Ecosystem facilitator context (NOT per-service): top facilitators by 7d settlement volume with a two-state verification flag.'
       properties:
-        license:
+        facilitator_id:
           type: string
-          enum:
-          - CC-BY-4.0
-          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
-        attribution_required:
-          type: boolean
-          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
-        attribution:
+        name:
           type: string
-          description: Ready-to-use attribution string to display when reusing this data.
-          example: 'Data: x402-list.com (CC BY 4.0)'
-        cite_as:
-          type: string
-          format: uri
-          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
-          example: https://x402-list.com/services/acme-generate
-        source:
-          type: string
-          format: uri
-          description: Canonical site origin behind the directory.
-          example: https://x402-list.com
-    Error:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code:
-              type: integer
-            message:
-              type: string
-    PaymentRequirements:
-      type: object
-      description: A single x402 payment option (one element of accepts[]).
-      properties:
-        scheme:
-          type: string
-          enum:
-          - exact
-        network:
-          type: string
-          description: CAIP-2 network id
-          example: eip155:8453
-        asset:
-          type: string
-          description: Token contract address
-          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
-        amount:
-          type: string
-          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
-          example: '500000'
-        payTo:
-          type: string
-          description: Receiving wallet address
-        maxTimeoutSeconds:
+        volume_usd_7d:
+          type: number
+          description: decimal US dollars
+        tx_count_7d:
           type: integer
-          example: 300
-        extra:
-          type: object
-          description: EIP-712 signing domain parameters
-          properties:
-            name:
-              type: string
-              example: USD Coin
-            version:
-              type: string
-              example: '2'
+        verification:
+          type: string
+          enum:
+          - on-chain
+          - listed
+          description: '"on-chain" iff observed on-chain volume greater than zero, else "listed"'
     BestRecommendation:
       type: object
       description: One ranked service recommendation from GET /best. All *_usd fields are decimal US dollars.
@@ -456,17 +358,115 @@ components:
         why:
           type: string
           description: Short human-readable rationale
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+    PaymentRequirements:
+      type: object
+      description: A single x402 payment option (one element of accepts[]).
+      properties:
+        scheme:
+          type: string
+          enum:
+          - exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        amount:
+          type: string
+          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
+          example: '500000'
+        payTo:
+          type: string
+          description: Receiving wallet address
+        maxTimeoutSeconds:
+          type: integer
+          example: 300
+        extra:
+          type: object
+          description: EIP-712 signing domain parameters
+          properties:
+            name:
+              type: string
+              example: USD Coin
+            version:
+              type: string
+              example: '2'
+    BestResult:
+      type: object
+      description: 'The GET /best data block: ranked recommendations plus the ranking basis, danger-excluded slugs, and optional facilitator context.'
+      properties:
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/BestRecommendation'
+        ranking_basis:
+          type: string
+          description: Plain-language description of how the ranking was produced (the two-stage relevance-then-quality blend).
+        excluded_danger:
+          type: array
+          items:
+            type: string
+          description: Slugs removed from the recommendation set by a deterministic danger flag (blocklist or impersonation match only).
+        facilitator_context:
+          description: Top facilitators by 7d settlement volume when include_facilitator_context=true, otherwise null.
+          oneOf:
+          - type: array
+            items:
+              $ref: '#/components/schemas/FacilitatorContext'
+          - type: 'null'
+        note:
+          type: string
+          description: Present only when no service matched the given filters.
   responses:
-    RateLimited:
-      description: Rate limit exceeded
+    InternalError:
+      description: Internal server error
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
           example:
             error:
-              code: 429
-              message: Too many requests. Please slow down.
+              code: 500
+              message: Internal server error
     MeteredPaymentRequired:
       description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
       headers:
@@ -478,16 +478,16 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/PaymentRequired'
-    InternalError:
-      description: Internal server error
+    RateLimited:
+      description: Rate limit exceeded
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
           example:
             error:
-              code: 500
-              message: Internal server error
+              code: 429
+              message: Too many requests. Please slow down.
   headers:
     MeterRemaining:
       schema:

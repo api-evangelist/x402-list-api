@@ -159,43 +159,40 @@ paths:
           $ref: '#/components/responses/InternalError'
 components:
   schemas:
-    CanonicalAccept:
+    PaymentRequired:
       type: object
-      description: One canonical accepts[] entry captured from the live 402 wire, tied to the endpoint it was observed on. Field names are the stored snapshot shape (camelCase), passed through verbatim.
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
       properties:
-        endpoint:
-          type: string
-          description: The probed endpoint as "METHOD /path"
-          example: GET /v1/generate
-        scheme:
-          type: string
-          example: exact
-        network:
-          type: string
-          description: CAIP-2 network id
-          example: eip155:8453
-        asset:
-          type: string
-          description: Token contract address, verbatim
-          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
-        assetName:
-          type: string
-          example: USDC
-        payTo:
-          type: string
-          description: Receiving wallet address, verbatim (Solana base58 is case-significant, never lowercased)
-        price:
-          type: string
-          description: Atomic price as a string
-          example: '10000'
-        mimeType:
-          type:
-          - string
-          - 'null'
         x402Version:
-          type:
-          - integer
-          - 'null'
+          type: integer
+          enum:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
+          type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
+          properties:
+            url:
+              type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
     ChangeSummary:
       type: object
       description: 'Precomputed diff for the event. Fields are populated per event type: payto_changed carries the payTo deltas, price_changed carries priceChanges, schema_changed carries the schema/endpoint deltas. An absent field means no change of that kind.'
@@ -241,40 +238,6 @@ components:
           type: array
           items:
             type: string
-    PaymentRequired:
-      type: object
-      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
-      properties:
-        x402Version:
-          type: integer
-          enum:
-          - 2
-        accepts:
-          type: array
-          items:
-            $ref: '#/components/schemas/PaymentRequirements'
-        resource:
-          type: object
-          description: The paid resource this 402 guards (echoed by the x402 server).
-          properties:
-            url:
-              type: string
-              example: https://x402-list.com/api/v1/submit
-            description:
-              type: string
-              example: Resubmission fee after a rejected submission
-            mimeType:
-              type: string
-              example: application/json
-            serviceName:
-              type: string
-              example: x402 List
-        error:
-          type: string
-          description: App-level error code, e.g. resubmission_fee_required
-        message:
-          type: string
-          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
     ServiceChangeEvent:
       type: object
       description: A change detected on a service live 402 wire, joined to the service it belongs to.
@@ -352,16 +315,6 @@ components:
         total_pages:
           type: integer
           description: Total number of pages
-    Error:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code:
-              type: integer
-            message:
-              type: string
     PaymentRequirements:
       type: object
       description: A single x402 payment option (one element of accepts[]).
@@ -398,17 +351,64 @@ components:
             version:
               type: string
               example: '2'
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+    CanonicalAccept:
+      type: object
+      description: One canonical accepts[] entry captured from the live 402 wire, tied to the endpoint it was observed on. Field names are the stored snapshot shape (camelCase), passed through verbatim.
+      properties:
+        endpoint:
+          type: string
+          description: The probed endpoint as "METHOD /path"
+          example: GET /v1/generate
+        scheme:
+          type: string
+          example: exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address, verbatim
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        assetName:
+          type: string
+          example: USDC
+        payTo:
+          type: string
+          description: Receiving wallet address, verbatim (Solana base58 is case-significant, never lowercased)
+        price:
+          type: string
+          description: Atomic price as a string
+          example: '10000'
+        mimeType:
+          type:
+          - string
+          - 'null'
+        x402Version:
+          type:
+          - integer
+          - 'null'
   responses:
-    RateLimited:
-      description: Rate limit exceeded
+    InternalError:
+      description: Internal server error
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
           example:
             error:
-              code: 429
-              message: Too many requests. Please slow down.
+              code: 500
+              message: Internal server error
     MeteredPaymentRequired:
       description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
       headers:
@@ -420,16 +420,16 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/PaymentRequired'
-    InternalError:
-      description: Internal server error
+    RateLimited:
+      description: Rate limit exceeded
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
           example:
             error:
-              code: 500
-              message: Internal server error
+              code: 429
+              message: Too many requests. Please slow down.
   headers:
     MeterRemaining:
       schema:

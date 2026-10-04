@@ -99,41 +99,6 @@ paths:
           $ref: '#/components/responses/InternalError'
 components:
   schemas:
-    Network:
-      type: object
-      description: A blockchain network that x402 services accept payments on
-      properties:
-        id:
-          type: string
-          format: uuid
-        caip2_id:
-          type: string
-          description: CAIP-2 chain identifier as stored (may be lowercase, e.g. the Solana reference); kept for backwards compatibility. Prefer caip2 for joins.
-          example: eip155:8453
-        caip2:
-          type: string
-          description: Canonical CAIP-2 identifier for cross-endpoint joins (exact casing, Solana reference truncated to 32 chars). Matches network_caip2 in service pricing and facilitator chains. Falls back to caip2_id for networks not yet in the canonical map.
-          example: eip155:8453
-        name:
-          type: string
-          example: Base
-        abbreviation:
-          type: string
-          example: BSE
-        chain_type:
-          type: string
-          example: evm
-        is_mainnet:
-          type: boolean
-        explorer_url:
-          type: string
-          format: uri
-        service_count:
-          type: integer
-          description: Number of services accepting payments on this network
-        avg_uptime:
-          type: number
-          description: Per-service mean of the latest daily uptime rollup for services on this network (see meta.avg_uptime_method)
     PaymentRequired:
       type: object
       description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
@@ -194,16 +159,6 @@ components:
           format: uri
           description: Canonical site origin behind the directory.
           example: https://x402-list.com
-    Error:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code:
-              type: integer
-            message:
-              type: string
     PaymentRequirements:
       type: object
       description: A single x402 payment option (one element of accepts[]).
@@ -240,17 +195,62 @@ components:
             version:
               type: string
               example: '2'
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+    Network:
+      type: object
+      description: A blockchain network that x402 services accept payments on
+      properties:
+        id:
+          type: string
+          format: uuid
+        caip2_id:
+          type: string
+          description: CAIP-2 chain identifier as stored (may be lowercase, e.g. the Solana reference); kept for backwards compatibility. Prefer caip2 for joins.
+          example: eip155:8453
+        caip2:
+          type: string
+          description: Canonical CAIP-2 identifier for cross-endpoint joins (exact casing, Solana reference truncated to 32 chars). Matches network_caip2 in service pricing and facilitator chains. Falls back to caip2_id for networks not yet in the canonical map.
+          example: eip155:8453
+        name:
+          type: string
+          example: Base
+        abbreviation:
+          type: string
+          example: BSE
+        chain_type:
+          type: string
+          example: evm
+        is_mainnet:
+          type: boolean
+        explorer_url:
+          type: string
+          format: uri
+        service_count:
+          type: integer
+          description: Number of services accepting payments on this network
+        avg_uptime:
+          type: number
+          description: Per-service mean of the latest daily uptime rollup for services on this network (see meta.avg_uptime_method)
   responses:
-    RateLimited:
-      description: Rate limit exceeded
+    InternalError:
+      description: Internal server error
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
           example:
             error:
-              code: 429
-              message: Too many requests. Please slow down.
+              code: 500
+              message: Internal server error
     MeteredPaymentRequired:
       description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
       headers:
@@ -262,16 +262,16 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/PaymentRequired'
-    InternalError:
-      description: Internal server error
+    RateLimited:
+      description: Rate limit exceeded
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
           example:
             error:
-              code: 500
-              message: Internal server error
+              code: 429
+              message: Too many requests. Please slow down.
   headers:
     MeterRemaining:
       schema:

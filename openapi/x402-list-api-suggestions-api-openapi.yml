@@ -107,31 +107,28 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 components:
+  responses:
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
   schemas:
-    SuggestionRequest:
-      type: object
-      description: Paid suggestion body (F11). Only "text" is required; the request must be paid ($0.10 USDC on Base via the x402 handshake). Suggestions are internal and manually reviewed, never published.
-      required:
-      - text
-      properties:
-        text:
-          type: string
-          minLength: 1
-          maxLength: 2000
-          description: The suggestion (1 to 2000 characters)
-        category:
-          type: string
-          enum:
-          - feature
-          - bug
-          - data
-          - other
-          default: other
-          description: Suggestion category (defaults to "other" when omitted)
-        email:
-          type: string
-          format: email
-          description: 'Optional contact email: receives the review outcome'
     PaymentRequired:
       type: object
       description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
@@ -192,16 +189,6 @@ components:
           format: uri
           description: Canonical site origin behind the directory.
           example: https://x402-list.com
-    Error:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code:
-              type: integer
-            message:
-              type: string
     PaymentRequirements:
       type: object
       description: A single x402 payment option (one element of accepts[]).
@@ -238,24 +225,37 @@ components:
             version:
               type: string
               example: '2'
-  responses:
-    RateLimited:
-      description: Rate limit exceeded
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 429
-              message: Too many requests. Please slow down.
-    InternalError:
-      description: Internal server error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 500
-              message: Internal server error
+    SuggestionRequest:
+      type: object
+      description: Paid suggestion body (F11). Only "text" is required; the request must be paid ($0.10 USDC on Base via the x402 handshake). Suggestions are internal and manually reviewed, never published.
+      required:
+      - text
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: The suggestion (1 to 2000 characters)
+        category:
+          type: string
+          enum:
+          - feature
+          - bug
+          - data
+          - other
+          default: other
+          description: Suggestion category (defaults to "other" when omitted)
+        email:
+          type: string
+          format: email
+          description: 'Optional contact email: receives the review outcome'
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string

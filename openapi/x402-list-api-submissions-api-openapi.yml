@@ -397,51 +397,38 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 components:
+  responses:
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 404
+              message: Service not found
   schemas:
-    ServiceSubmissionRequest:
-      type: object
-      description: 'Service submission body: the default branch of POST /submit when "type" is omitted'
-      required:
-      - url
-      - email
-      - service_name
-      - description
-      - website_url
-      - category
-      - endpoints
-      properties:
-        type:
-          type: string
-          description: Optional submission type discriminator. Omit for services; any value other than "facilitator" is treated as a service submission.
-        url:
-          type: string
-          format: uri
-          description: Base URL of the x402 service. On a free compute host (vercel.app, workers.dev and similar) the endpoint answers HTTP 402 and the submission costs a one-off, non-refundable $1 USDC on Base; on static-only hosting or a dev tunnel it is rejected with HTTP 400 at any price
-        email:
-          type: string
-          format: email
-          description: Submitter contact email
-        service_name:
-          type: string
-          description: Human-readable name of the service
-        description:
-          type: string
-          description: Brief description of what the service does
-        website_url:
-          type: string
-          format: uri
-          description: Public website URL
-        category:
-          type: string
-          description: Service category (use /categories to get valid values)
-        endpoints:
-          type: array
-          items:
-            type: string
-          description: List of endpoint paths to probe (e.g. ["/v1/generate", "/v1/translate"])
-        notes:
-          type: string
-          description: Optional additional context
     PaymentRequired:
       type: object
       description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
@@ -476,119 +463,6 @@ components:
         message:
           type: string
           description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
-    Provenance:
-      type: object
-      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
-      properties:
-        license:
-          type: string
-          enum:
-          - CC-BY-4.0
-          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
-        attribution_required:
-          type: boolean
-          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
-        attribution:
-          type: string
-          description: Ready-to-use attribution string to display when reusing this data.
-          example: 'Data: x402-list.com (CC BY 4.0)'
-        cite_as:
-          type: string
-          format: uri
-          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
-          example: https://x402-list.com/services/acme-generate
-        source:
-          type: string
-          format: uri
-          description: Canonical site origin behind the directory.
-          example: https://x402-list.com
-    Error:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code:
-              type: integer
-            message:
-              type: string
-    PaymentRequirements:
-      type: object
-      description: A single x402 payment option (one element of accepts[]).
-      properties:
-        scheme:
-          type: string
-          enum:
-          - exact
-        network:
-          type: string
-          description: CAIP-2 network id
-          example: eip155:8453
-        asset:
-          type: string
-          description: Token contract address
-          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
-        amount:
-          type: string
-          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
-          example: '500000'
-        payTo:
-          type: string
-          description: Receiving wallet address
-        maxTimeoutSeconds:
-          type: integer
-          example: 300
-        extra:
-          type: object
-          description: EIP-712 signing domain parameters
-          properties:
-            name:
-              type: string
-              example: USD Coin
-            version:
-              type: string
-              example: '2'
-    ServiceUpdateRequest:
-      type: object
-      description: 'Owner update request body (F10). Send ALL fields prefilled with the live listing values: the server computes the diff and records only what actually changed. Empty or omitted fields are always treated as UNCHANGED (nothing can be cleared through this channel). Only declarative metadata is updatable; measured fields (verified, uptime, pricing, status, payTo) are read-only for everyone.'
-      required:
-      - email
-      properties:
-        email:
-          type: string
-          format: email
-          description: 'Requester email: receives the review outcome. Subject to the per-(email, service) 7-day cooldown'
-        name:
-          type: string
-          maxLength: 255
-          description: 'Proposed service name (the slug NEVER changes: citations and monitor history hang off it)'
-        base_url:
-          type: string
-          format: uri
-          description: Proposed base URL. Changing it is an identity change and is reviewed with extra scrutiny; the ownership proof is always checked on the CURRENT domain
-        website_url:
-          type: string
-          format: uri
-          description: Proposed website URL (dev-tunnel domains are rejected; free hosting is allowed)
-        category:
-          type: string
-          maxLength: 100
-        description:
-          type: string
-          maxLength: 2000
-        contact_email:
-          type: string
-          format: email
-          description: Proposed owner contact email; empty string = keep unchanged
-        endpoints_add:
-          type: array
-          items:
-            type: string
-          maxItems: 50
-          example:
-          - /v1/summarize
-          - POST /v1/chat/completions
-          description: NEW x402-protected endpoints to add, one per entry, as "/v1/resource" or "POST /v1/resource". GET and POST are the accepted methods (case-insensitive) and an entry with no method prefix is taken as GET. Method and path together identify an endpoint, so "POST /x" is a new addition even when "GET /x" is already listed; an entry already listed with the same method is silently ignored. Endpoints cannot be removed from here. The endpoint is probed for HTTP 402 with the declared method after ownership verification. Also accepted as one newline-separated string.
     FacilitatorSubmissionRequest:
       type: object
       description: 'Facilitator submission body, selected by "type": "facilitator". Facilitators are settlement infrastructure: they are verified by on-chain settlement activity from their settler addresses, never by an HTTP 402 probe. Approved facilitators are listed on GET /facilitators with verification "listed" and switch to "on-chain" automatically once settlement volume is measured.'
@@ -653,34 +527,160 @@ components:
         notes:
           type: string
           description: Optional additional context
-  responses:
-    RateLimited:
-      description: Rate limit exceeded
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
+    PaymentRequirements:
+      type: object
+      description: A single x402 payment option (one element of accepts[]).
+      properties:
+        scheme:
+          type: string
+          enum:
+          - exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        amount:
+          type: string
+          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
+          example: '500000'
+        payTo:
+          type: string
+          description: Receiving wallet address
+        maxTimeoutSeconds:
+          type: integer
+          example: 300
+        extra:
+          type: object
+          description: EIP-712 signing domain parameters
+          properties:
+            name:
+              type: string
+              example: USD Coin
+            version:
+              type: string
+              example: '2'
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+    ServiceUpdateRequest:
+      type: object
+      description: 'Owner update request body (F10). Send ALL fields prefilled with the live listing values: the server computes the diff and records only what actually changed. Empty or omitted fields are always treated as UNCHANGED (nothing can be cleared through this channel). Only declarative metadata is updatable; measured fields (verified, uptime, pricing, status, payTo) are read-only for everyone.'
+      required:
+      - email
+      properties:
+        email:
+          type: string
+          format: email
+          description: 'Requester email: receives the review outcome. Subject to the per-(email, service) 7-day cooldown'
+        name:
+          type: string
+          maxLength: 255
+          description: 'Proposed service name (the slug NEVER changes: citations and monitor history hang off it)'
+        base_url:
+          type: string
+          format: uri
+          description: Proposed base URL. Changing it is an identity change and is reviewed with extra scrutiny; the ownership proof is always checked on the CURRENT domain
+        website_url:
+          type: string
+          format: uri
+          description: Proposed website URL (dev-tunnel domains are rejected; free hosting is allowed)
+        category:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 2000
+        contact_email:
+          type: string
+          format: email
+          description: Proposed owner contact email; empty string = keep unchanged
+        endpoints_add:
+          type: array
+          items:
+            type: string
+          maxItems: 50
           example:
-            error:
-              code: 429
-              message: Too many requests. Please slow down.
-    InternalError:
-      description: Internal server error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 500
-              message: Internal server error
-    NotFound:
-      description: Resource not found
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 404
-              message: Service not found
+          - /v1/summarize
+          - POST /v1/chat/completions
+          description: NEW x402-protected endpoints to add, one per entry, as "/v1/resource" or "POST /v1/resource". GET and POST are the accepted methods (case-insensitive) and an entry with no method prefix is taken as GET. Method and path together identify an endpoint, so "POST /x" is a new addition even when "GET /x" is already listed; an entry already listed with the same method is silently ignored. Endpoints cannot be removed from here. The endpoint is probed for HTTP 402 with the declared method after ownership verification. Also accepted as one newline-separated string.
+    ServiceSubmissionRequest:
+      type: object
+      description: 'Service submission body: the default branch of POST /submit when "type" is omitted'
+      required:
+      - url
+      - email
+      - service_name
+      - description
+      - website_url
+      - category
+      - endpoints
+      properties:
+        type:
+          type: string
+          description: Optional submission type discriminator. Omit for services; any value other than "facilitator" is treated as a service submission.
+        url:
+          type: string
+          format: uri
+          description: Base URL of the x402 service. On a free compute host (vercel.app, workers.dev and similar) the endpoint answers HTTP 402 and the submission costs a one-off, non-refundable $1 USDC on Base; on static-only hosting or a dev tunnel it is rejected with HTTP 400 at any price
+        email:
+          type: string
+          format: email
+          description: Submitter contact email
+        service_name:
+          type: string
+          description: Human-readable name of the service
+        description:
+          type: string
+          description: Brief description of what the service does
+        website_url:
+          type: string
+          format: uri
+          description: Public website URL
+        category:
+          type: string
+          description: Service category (use /categories to get valid values)
+        endpoints:
+          type: array
+          items:
+            type: string
+          description: List of endpoint paths to probe (e.g. ["/v1/generate", "/v1/translate"])
+        notes:
+          type: string
+          description: Optional additional context

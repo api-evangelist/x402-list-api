@@ -73,39 +73,6 @@ paths:
           $ref: '#/components/responses/InternalError'
 components:
   schemas:
-    GlobalCheckEntry:
-      type: object
-      description: A check entry with service info, for the global live feed
-      properties:
-        id:
-          type: string
-          format: uuid
-        checked_at:
-          type: string
-          format: date-time
-        is_up:
-          type: boolean
-        response_time_ms:
-          type:
-          - integer
-          - 'null'
-        status_code:
-          type:
-          - integer
-          - 'null'
-        endpoints_found:
-          type: integer
-        service_name:
-          type: string
-        service_slug:
-          type: string
-        service_status:
-          type: string
-          enum:
-          - online
-          - degraded
-          - offline
-          - unknown
     PaymentRequired:
       type: object
       description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
@@ -166,16 +133,6 @@ components:
           format: uri
           description: Canonical site origin behind the directory.
           example: https://x402-list.com
-    Error:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code:
-              type: integer
-            message:
-              type: string
     PaymentRequirements:
       type: object
       description: A single x402 payment option (one element of accepts[]).
@@ -212,17 +169,60 @@ components:
             version:
               type: string
               example: '2'
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+    GlobalCheckEntry:
+      type: object
+      description: A check entry with service info, for the global live feed
+      properties:
+        id:
+          type: string
+          format: uuid
+        checked_at:
+          type: string
+          format: date-time
+        is_up:
+          type: boolean
+        response_time_ms:
+          type:
+          - integer
+          - 'null'
+        status_code:
+          type:
+          - integer
+          - 'null'
+        endpoints_found:
+          type: integer
+        service_name:
+          type: string
+        service_slug:
+          type: string
+        service_status:
+          type: string
+          enum:
+          - online
+          - degraded
+          - offline
+          - unknown
   responses:
-    RateLimited:
-      description: Rate limit exceeded
+    InternalError:
+      description: Internal server error
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
           example:
             error:
-              code: 429
-              message: Too many requests. Please slow down.
+              code: 500
+              message: Internal server error
     MeteredPaymentRequired:
       description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
       headers:
@@ -234,16 +234,16 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/PaymentRequired'
-    InternalError:
-      description: Internal server error
+    RateLimited:
+      description: Rate limit exceeded
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
           example:
             error:
-              code: 500
-              message: Internal server error
+              code: 429
+              message: Too many requests. Please slow down.
   headers:
     MeterRemaining:
       schema:

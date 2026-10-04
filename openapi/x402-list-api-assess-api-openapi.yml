@@ -131,6 +131,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 components:
+  responses:
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
   schemas:
     PaymentRequired:
       type: object
@@ -166,6 +187,17 @@ components:
         message:
           type: string
           description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+    AssessReport:
+      type: object
+      description: 'The modular assessment report body: one block per priced module. It always carries the advisor answer under answer; a probe_report block is added when a live probe ran. Future modules add their own block additively.'
+      properties:
+        answer:
+          $ref: '#/components/schemas/AssessAnswer'
+        probe_report:
+          description: Present only when a live probe ran (the request carried a probe target and live probing was armed). The truncated probe result; never the verbatim third-party body.
+          oneOf:
+          - $ref: '#/components/schemas/ProbeReport'
+          - type: 'null'
     Provenance:
       type: object
       description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
@@ -192,17 +224,42 @@ components:
           format: uri
           description: Canonical site origin behind the directory.
           example: https://x402-list.com
-    AssessReport:
+    PaymentRequirements:
       type: object
-      description: 'The modular assessment report body: one block per priced module. It always carries the advisor answer under answer; a probe_report block is added when a live probe ran. Future modules add their own block additively.'
+      description: A single x402 payment option (one element of accepts[]).
       properties:
-        answer:
-          $ref: '#/components/schemas/AssessAnswer'
-        probe_report:
-          description: Present only when a live probe ran (the request carried a probe target and live probing was armed). The truncated probe result; never the verbatim third-party body.
-          oneOf:
-          - $ref: '#/components/schemas/ProbeReport'
-          - type: 'null'
+        scheme:
+          type: string
+          enum:
+          - exact
+        network:
+          type: string
+          description: CAIP-2 network id
+          example: eip155:8453
+        asset:
+          type: string
+          description: Token contract address
+          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+        amount:
+          type: string
+          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
+          example: '500000'
+        payTo:
+          type: string
+          description: Receiving wallet address
+        maxTimeoutSeconds:
+          type: integer
+          example: 300
+        extra:
+          type: object
+          description: EIP-712 signing domain parameters
+          properties:
+            name:
+              type: string
+              example: USD Coin
+            version:
+              type: string
+              example: '2'
     ProbeReport:
       type: object
       description: Live-probe result block (treno 4). The report of a real x402 payment to one listed service and an analysis of what it returned. It carries a verdict plus truncated evidence snippets and NEVER the verbatim third-party body. All *_atomic fields are atomic USDC (6-decimal integer strings), not dollars. Probe fees are non-refundable regardless of outcome.
@@ -374,60 +431,3 @@ components:
               type: string
               maxLength: 500
               description: Optional URL path on that service to probe, beginning with '/'. Omit to let the server pick the cheapest priced USDC-on-Base endpoint. Templated paths (with {param} or :param placeholders) cannot be probed live and are excluded from probing.
-    PaymentRequirements:
-      type: object
-      description: A single x402 payment option (one element of accepts[]).
-      properties:
-        scheme:
-          type: string
-          enum:
-          - exact
-        network:
-          type: string
-          description: CAIP-2 network id
-          example: eip155:8453
-        asset:
-          type: string
-          description: Token contract address
-          example: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
-        amount:
-          type: string
-          description: Atomic USDC (6 decimals) as a string; "500000" = $0.50
-          example: '500000'
-        payTo:
-          type: string
-          description: Receiving wallet address
-        maxTimeoutSeconds:
-          type: integer
-          example: 300
-        extra:
-          type: object
-          description: EIP-712 signing domain parameters
-          properties:
-            name:
-              type: string
-              example: USD Coin
-            version:
-              type: string
-              example: '2'
-  responses:
-    RateLimited:
-      description: Rate limit exceeded
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 429
-              message: Too many requests. Please slow down.
-    InternalError:
-      description: Internal server error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 500
-              message: Internal server error
