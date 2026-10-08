@@ -599,6 +599,10 @@ apis:
   - type: SpectralRules
     url: rules/x402-list-api-spectral.yaml
 common:
+- type: Plans
+  url: plans/x402-list-api-plans-pricing.yml
+- type: RateLimits
+  url: rate-limits/x402-list-api-rate-limits.yml
 - url: https://www.x402-list.com/blog
   type: Blog
 - url: https://www.x402-list.com/feed.xml
