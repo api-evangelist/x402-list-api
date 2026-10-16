@@ -1,0 +1,28 @@
+{
+  "repo": "x402-list-api",
+  "feeds": [
+    {
+      "source": "https://www.x402-list.com/blog",
+      "feed_url": "https://www.x402-list.com/blog",
+      "title": "",
+      "saved": 0,
+      "method": "none"
+    },
+    {
+      "source": "https://x402-list.com/blog",
+      "feed_url": "https://x402-list.com/blog",
+      "title": "",
+      "saved": 0,
+      "method": "none"
+    },
+    {
+      "source": "https://www.x402-list.com/feed.xml",
+      "feed_url": "https://www.x402-list.com/feed.xml",
+      "title": "",
+      "saved": 50,
+      "method": "feed"
+    }
+  ],
+  "post_count": 50,
+  "fetched": "2026-10-10T13:15:00Z"
+}
