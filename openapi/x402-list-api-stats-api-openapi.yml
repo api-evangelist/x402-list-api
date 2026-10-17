@@ -103,40 +103,6 @@ paths:
           $ref: '#/components/responses/InternalError'
 components:
   schemas:
-    PaymentRequired:
-      type: object
-      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
-      properties:
-        x402Version:
-          type: integer
-          enum:
-          - 2
-        accepts:
-          type: array
-          items:
-            $ref: '#/components/schemas/PaymentRequirements'
-        resource:
-          type: object
-          description: The paid resource this 402 guards (echoed by the x402 server).
-          properties:
-            url:
-              type: string
-              example: https://x402-list.com/api/v1/submit
-            description:
-              type: string
-              example: Resubmission fee after a rejected submission
-            mimeType:
-              type: string
-              example: application/json
-            serviceName:
-              type: string
-              example: x402 List
-        error:
-          type: string
-          description: App-level error code, e.g. resubmission_fee_required
-        message:
-          type: string
-          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
     AggregateStats:
       type: object
       description: Aggregate statistics about the x402 ecosystem
@@ -288,32 +254,6 @@ components:
         facilitator_volume_note:
           type: string
           description: In-band note framing facilitator_volume_usd_30d as a non-deduped superset of the listed-services flow
-    Provenance:
-      type: object
-      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
-      properties:
-        license:
-          type: string
-          enum:
-          - CC-BY-4.0
-          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
-        attribution_required:
-          type: boolean
-          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
-        attribution:
-          type: string
-          description: Ready-to-use attribution string to display when reusing this data.
-          example: 'Data: x402-list.com (CC BY 4.0)'
-        cite_as:
-          type: string
-          format: uri
-          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
-          example: https://x402-list.com/services/acme-generate
-        source:
-          type: string
-          format: uri
-          description: Canonical site origin behind the directory.
-          example: https://x402-list.com
     PaymentRequirements:
       type: object
       description: A single x402 payment option (one element of accepts[]).
@@ -350,6 +290,66 @@ components:
             version:
               type: string
               example: '2'
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
+    PaymentRequired:
+      type: object
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
+      properties:
+        x402Version:
+          type: integer
+          enum:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
+          type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
+          properties:
+            url:
+              type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
     Error:
       type: object
       properties:
@@ -360,6 +360,15 @@ components:
               type: integer
             message:
               type: string
+  headers:
+    MeterReset:
+      schema:
+        type: integer
+      description: 'Unix timestamp (seconds) at which this IP''s free daily metered-GET quota resets: the next 00:00 UTC. Same shape as X-RateLimit-Reset. Lets a caller behind a shared egress IP tell when the per-IP quota rolls over.'
+    MeterRemaining:
+      schema:
+        type: integer
+      description: Free metered GET requests left today for this IP (see the metering note in the API description).
   responses:
     InternalError:
       description: Internal server error
@@ -392,12 +401,3 @@ components:
             error:
               code: 429
               message: Too many requests. Please slow down.
-  headers:
-    MeterRemaining:
-      schema:
-        type: integer
-      description: Free metered GET requests left today for this IP (see the metering note in the API description).
-    MeterReset:
-      schema:
-        type: integer
-      description: 'Unix timestamp (seconds) at which this IP''s free daily metered-GET quota resets: the next 00:00 UTC. Same shape as X-RateLimit-Reset. Lets a caller behind a shared egress IP tell when the per-IP quota rolls over.'

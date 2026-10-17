@@ -600,433 +600,6 @@ components:
         tx_count:
           type: integer
           description: Settlement count observed that day
-    Traction:
-      type: object
-      description: 'Family 6: measured on-chain traction snapshot for a service, derived deterministically from settler-attributed USDC settlements over the service payTo mapping. null != 0: status "measured" reports real numbers (0 is an honest "never settled on-chain via a facilitator"); "no-payto" (no known payTo) and "unmeasured-network" (payTo only on a network we do not measure) null every metric rather than fake a zero; "unresponsive" suppresses the numbers of a shared-payout member whose probe has been failing for 7 days (settlements on the shared address are not attributed to it while it is down). A conservative undercount. shared_payout marks a payTo shared across services: volume_usd_30d is then attributed PRO-QUOTA (the operator-level figure divided by the current members sharing the payout), a declared convention rather than an individually observed measure, while tx_count_30d and unique_buyers_30d stay WHOLE operator-level integers, never divided or fractional; the ratios top_buyer_share_30d and trend_7d_vs_30d are left whole.'
-      properties:
-        status:
-          type: string
-          enum:
-          - measured
-          - no-payto
-          - unmeasured-network
-          - unresponsive
-          description: Whether the metrics are measured, and if not, why they are null
-        volume_usd_30d:
-          type:
-          - number
-          - 'null'
-          description: Settlement volume in USD over the trailing 30 UTC days; null unless status is measured. On a shared payout it is attributed pro-quota (the address total divided by the services sharing it), so the block sums correctly across services; the daily /volume series stays address-level, do not sum THAT across shared-payout services.
-        tx_count_30d:
-          type:
-          - number
-          - 'null'
-          description: Settlement count over the trailing 30 UTC days; null unless measured. On a shared payout it stays a WHOLE operator-level integer, never divided (apply pro_quota_share for the nominal per-service slice), so never sum it across services that share a payout.
-        unique_buyers_30d:
-          type:
-          - number
-          - 'null'
-          description: Distinct buyer addresses over the trailing 30 UTC days; null unless measured. On a shared payout it stays a WHOLE operator-level integer, never divided or fractional (apply pro_quota_share for the nominal slice), so never sum it across services that share a payout.
-        last_settlement_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-          description: Most recent observed settlement across all history; null unless measured
-        top_buyer_share_30d:
-          type:
-          - number
-          - 'null'
-          minimum: 0
-          maximum: 1
-          description: 0-1 share of the single largest buyer over 30d (concentration); null when 30d volume is 0 or not measured
-        trend_7d_vs_30d:
-          type:
-          - number
-          - 'null'
-          description: Ratio of the last-7d daily rate to the 30d daily rate; null when 30d volume is 0 or not measured
-        shared_payout:
-          type: boolean
-          description: A current payTo of this service is also a current payTo of another service; when true only volume_usd_30d is attributed pro-quota, while the counting metrics stay whole operator-level integers
-        shared_with:
-          type: integer
-          minimum: 0
-          description: Count of OTHER services sharing a current payTo (0 when not shared); the pro-quota divisor is shared_with + 1
-        pro_quota_share:
-          type:
-          - number
-          - 'null'
-          minimum: 0
-          maximum: 1
-          description: 'Cluster fraction 1/(shared_with + 1): the pro-quota slice to apply to the whole-integer counts (tx_count_30d, unique_buyers_30d, tx_count_all_time) for this service nominal portion of a shared payout. 1 on a dedicated (unshared) payout; null unless status is measured.'
-        measured_networks:
-          type: array
-          items:
-            type: string
-          description: Canonical CAIP-2 networks that contributed a measurement
-        first_settlement_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-          description: 'TRENO A additive: first observed on-chain settlement over the payTo mapping; null unless measured (never recorded yet). null on a snapshot stored before this field existed.'
-        volume_usd_all_time:
-          type:
-          - number
-          - 'null'
-          description: 'TRENO A additive: settlement volume in USD over all recorded history since listing. Attributed PRO-QUOTA on a shared payout, exactly like volume_usd_30d (all-time over a shared address is still the operator figure divided by the sharing services). null unless measured, or on a pre-extension snapshot.'
-        tx_count_all_time:
-          type:
-          - number
-          - 'null'
-          description: 'TRENO A additive: settlement count over all recorded history. On a shared payout it stays a WHOLE operator-level integer, never divided or fractional, like tx_count_30d (apply pro_quota_share for the nominal slice; only volume_usd_all_time is pro-quota). null unless measured, or on a pre-extension snapshot.'
-        median_settlement_usd_30d:
-          type:
-          - number
-          - 'null'
-          description: 'TRENO A additive: median single-settlement amount (USD) over the trailing 30 days. An invariant per-settlement amount, NEVER divided pro-quota. null unless measured, or on a pre-extension snapshot.'
-        max_settlement_usd_30d:
-          type:
-          - number
-          - 'null'
-          description: 'TRENO A additive: largest single-settlement amount (USD) over the trailing 30 days. An invariant per-settlement amount, NEVER divided pro-quota. null unless measured, or on a pre-extension snapshot.'
-        settled_via:
-          type: array
-          items:
-            type: string
-          description: 'TRENO A additive (D1): facilitator ids that settled this service on-chain over the trailing 30 days, ordered by volume. [] when not measured or on a pre-extension snapshot. An invariant fact, never divided.'
-        settled_via_detail:
-          type: array
-          items:
-            type: object
-            properties:
-              id:
-                type: string
-              volume_usd_30d:
-                type: number
-              tx_count_30d:
-                type: integer
-          description: 'A-26#2 additive: settled_via WITH the per-facilitator 30d volume/tx weights, same order as settled_via. [] when not measured or on a pre-extension snapshot. Invariant facts, never divided.'
-        shared_with_services:
-          type: array
-          items:
-            type: object
-            properties:
-              slug:
-                type: string
-              name:
-                type: string
-          description: 'TRENO A additive (E4): the other listed services currently sharing this payout address (slug + name), for the pro-quota disclosure. [] when the payout is not shared or on a pre-extension snapshot. An invariant fact, never divided.'
-        caveat:
-          type: string
-          description: 'Fixed in-band note: the conservative undercount, plus the pro-quota convention when the payout is shared'
-        all_time_caveat:
-          type: string
-          description: 'A-25#2 additive: fixed in-band note that first_settlement_at / volume_usd_all_time / tx_count_all_time are floored at the start of our harvest window (the fixed backfill floor, differing per chain), not the service full history.'
-    CheckEntry:
-      type: object
-      description: A single monitoring check result
-      properties:
-        id:
-          type: string
-          format: uuid
-        checked_at:
-          type: string
-          format: date-time
-        response_time_ms:
-          type:
-          - integer
-          - 'null'
-        status_code:
-          type:
-          - integer
-          - 'null'
-        is_up:
-          type: boolean
-        error_message:
-          type:
-          - string
-          - 'null'
-        endpoints_found:
-          type: integer
-    Assessment:
-      type: object
-      description: Full evidence-backed per-service assessment. Measured families are read-only plain values; the synthesis block is AI-derived and marked. "unknown"/null are honest, not zero.
-      properties:
-        updated_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-        input_hash:
-          type:
-          - string
-          - 'null'
-          description: Hash of the normalized inputs the assessment was computed over
-        model_id:
-          type:
-          - string
-          - 'null'
-          description: LLM model id used for the synthesis block (null when no synthesis ran)
-        prompt_version:
-          type:
-          - string
-          - 'null'
-        reliability:
-          type:
-          - object
-          - 'null'
-          description: 'Family 1: uptime windows, p95/avg response, freshness, failures, total checks (measured)'
-        compliance:
-          type:
-          - object
-          - 'null'
-          description: 'Family 2: x402 conformance grade + per-check ok/x list (14 checks, of which three cover signability: the declared x402 version, the EIP-712 domain parameters on every EVM entry, and whether a v2 envelope travelled in the payment-required header), payTo source/location (deterministic). Each check is true, false, or null when it could not be evaluated, and a null never counts as a failure'
-        site:
-          type:
-          - object
-          - 'null'
-          description: 'Family 3: homepage/openapi/pricing/llms.txt/robots/terms reachability (measured)'
-        domain:
-          type:
-          - object
-          - 'null'
-          description: 'Family 4: domain age, registrar, free-host flag (measured)'
-        economics:
-          type:
-          - object
-          - 'null'
-          description: 'Family 5 (measured): entry price (min USD + atomic) and its in-category percentile, plus the full price picture for tiered services: price_max_usd (highest tier), category_percentile_max, endpoint_count, distinct_price_count, pricing model and stability'
-        risk:
-          type:
-          - object
-          - 'null'
-          description: 'Family 8: deterministic risk level + flags (blocklist/impersonation only; never AI, never from low uptime or high price)'
-        synthesis:
-          type:
-          - object
-          - 'null'
-          description: 'Family 10: AI-derived summary/capability_tags/category/inputs/outputs/auth, each an AiMarkedField {value,confidence,source:"ai"}; never overrides a measured value'
-        traction:
-          description: 'Family 6: measured on-chain settlement traction (volume/buyers/concentration over the payTo mapping, USDC, a conservative undercount); null on rows assessed before this field existed'
-          oneOf:
-          - $ref: '#/components/schemas/Traction'
-          - type: 'null'
-    BuyersPoint:
-      type: object
-      description: One UTC-day bucket of the distinct on-chain buyers a service settled with (counted from the raw settlements, not summed from a rollup)
-      properties:
-        date:
-          type: string
-          description: UTC day (YYYY-MM-DD)
-          example: '2026-07-06'
-        unique_buyers:
-          type: integer
-          description: Distinct buyer addresses observed settling that day
-    Provenance:
-      type: object
-      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
-      properties:
-        license:
-          type: string
-          enum:
-          - CC-BY-4.0
-          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
-        attribution_required:
-          type: boolean
-          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
-        attribution:
-          type: string
-          description: Ready-to-use attribution string to display when reusing this data.
-          example: 'Data: x402-list.com (CC BY 4.0)'
-        cite_as:
-          type: string
-          format: uri
-          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
-          example: https://x402-list.com/services/acme-generate
-        source:
-          type: string
-          format: uri
-          description: Canonical site origin behind the directory.
-          example: https://x402-list.com
-    Error:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code:
-              type: integer
-            message:
-              type: string
-    Endpoint:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        method:
-          type: string
-          example: GET
-        path:
-          type: string
-          example: /v1/forecast
-        description:
-          type:
-          - string
-          - 'null'
-        mime_type:
-          type:
-          - string
-          - 'null'
-        is_active:
-          type: boolean
-        first_seen_at:
-          type: string
-          format: date-time
-        last_seen_at:
-          type: string
-          format: date-time
-        min_price_usd:
-          type:
-          - number
-          - 'null'
-        networks:
-          type: array
-          items:
-            type: string
-          description: Network abbreviations for this endpoint
-        pricing:
-          type: array
-          items:
-            $ref: '#/components/schemas/PricingEntry'
-    AssessmentSummary:
-      type: object
-      description: Compact per-service assessment summary carried on each list item (backs relevance/quality ranking). Measured sub-scores are plain; capability_tags/summary are AI-derived and marked.
-      properties:
-        compliance_grade:
-          type:
-          - string
-          - 'null'
-          enum:
-          - A
-          - B
-          - C
-          - D
-          - F
-          - unknown
-          - null
-          description: 'x402 conformance grade over the deterministic checklist (the share of evaluable checks the service passes). One ceiling applies: a service with at least one EVM route missing the EIP-712 domain parameters a standard x402 client needs in order to sign (check eip712_domain_extra = false) does not grade above C, however clean the rest of the envelope is. "unknown" means nothing has been observed yet, which is not a failure.'
-        compliance_passed:
-          type:
-          - integer
-          - 'null'
-          description: How many of the evaluable checks passed
-        compliance_total:
-          type:
-          - integer
-          - 'null'
-          description: 'How many checks could be evaluated at all: the denominator of the grade, up to 14. It is lower when a check does not apply (a Solana-only service has no EVM entry for the EIP-712 domain check) or could not be observed; a not-evaluable check is never counted as a failure'
-        compliance_failed_checks:
-          type:
-          - array
-          - 'null'
-          items:
-            type: string
-          description: Machine-stable ids of the conformance checks that failed (pass=false); [] = all pass, null = no compliance graded. Human labels are in the detail assessment.compliance.checks[]. The three signability ids are eip712_domain_extra (at least one EVM route carries no EIP-712 domain parameters, so a standard x402 client cannot sign a payment for it), x402_version_current (a captured payload declares an x402 version other than the current 2) and version_channel_coherent (an envelope declaring x402 version 2 was delivered only in the response body, not in the payment-required header). Only eip712_domain_extra caps the grade; the other two are facts about the envelope that do not stop a payment from being signed
-        reliability_uptime_30d:
-          type:
-          - number
-          - 'null'
-          description: Measured 30d uptime percentage; null = not yet measured
-        response_p95_ms:
-          type:
-          - integer
-          - 'null'
-        price_usd:
-          type:
-          - number
-          - 'null'
-          description: Decimal USD (entry / min price)
-        category_percentile:
-          type:
-          - number
-          - 'null'
-          description: 0-100 within its category, ranked on the min price (lower = cheaper)
-        price_stability:
-          type:
-          - number
-          - 'null'
-          description: 0-1, 1 = price never moved
-        price_max_usd:
-          type:
-          - number
-          - 'null'
-          description: Decimal USD (highest tier); equals price_usd when flat. null on rows assessed before this field existed
-        category_percentile_max:
-          type:
-          - number
-          - 'null'
-          description: 0-100, ranked on the max price among every service max price in the category
-        endpoint_count:
-          type:
-          - integer
-          - 'null'
-          description: Count of active priced endpoints
-        distinct_price_count:
-          type:
-          - integer
-          - 'null'
-          description: Count of distinct current prices (1 = flat, >1 = tiered)
-        risk_level:
-          type:
-          - string
-          - 'null'
-          enum:
-          - clean
-          - warning
-          - danger
-          - null
-          description: Deterministic risk banner level
-        capability_tags:
-          description: AI-derived capability tags, marked {value,confidence,source:"ai"}; null when the model could not ground them
-          oneOf:
-          - $ref: '#/components/schemas/AiMarkedField'
-          - type: 'null'
-        summary:
-          description: AI-derived one-line summary, marked {value,confidence,source:"ai"}; null when unknown
-          oneOf:
-          - $ref: '#/components/schemas/AiMarkedField'
-          - type: 'null'
-        traction:
-          description: Family 6 measured on-chain traction (same block as the detail); null on rows assessed before this field existed
-          oneOf:
-          - $ref: '#/components/schemas/Traction'
-          - type: 'null'
-        updated_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-    UptimeDataPoint:
-      type: object
-      description: Daily uptime snapshot for a service
-      properties:
-        period_start:
-          type: string
-          format: date-time
-        period_end:
-          type: string
-          format: date-time
-        uptime_percentage:
-          type: number
-          example: 99.5
-        avg_response_time_ms:
-          type: number
-        total_checks:
-          type: integer
-        successful_checks:
-          type: integer
     ScorePoint:
       type: object
       description: 'One assessment run projected to its measured sub-scores (the sub-scores only: no ranked composite score, no AI-derived fields)'
@@ -1070,121 +643,74 @@ components:
           type:
           - integer
           - 'null'
-    PaginationMeta:
+    PricePoint:
       type: object
+      description: One captured 402 price observation for a service, at one endpoint/network/asset
       properties:
-        total:
-          type: integer
-          description: Total number of results
-        page:
-          type: integer
-          description: Current page number
-        per_page:
-          type: integer
-          description: Results per page
-        total_pages:
-          type: integer
-          description: Total number of pages
-    ServiceListItem:
-      type: object
-      description: A service in the directory listing with computed summary fields
-      properties:
-        slug:
+        recorded_at:
           type: string
-          description: URL-friendly identifier
-          example: weather-x402
-        name:
+          format: date-time
+          description: UTC timestamp (ISO 8601, Z-format)
+        price_usd:
+          type:
+          - number
+          - 'null'
+          description: Decimal USD at that observation
+        endpoint_id:
           type: string
-          example: Weather x402
-        description:
+        network:
           type: string
-        base_url:
-          type: string
-          format: uri
-        website_url:
+          description: Network id the price was recorded on
+        asset_address:
           type:
           - string
           - 'null'
-          format: uri
-        category:
+          description: Token address; null = unknown/not reported
+    PricingEntry:
+      type: object
+      description: Current pricing for an endpoint on a specific network
+      properties:
+        scheme:
           type: string
-          example: Data
-        source:
+          example: exact
+        network:
           type: string
-          enum:
-          - submitted
-          - imported:bazaar
-          - imported:x402scan
-          description: 'Provenance (D4): how this listing entered the directory. "submitted" = an operator or user submitted it through /submit; "imported:<origin>" = auto-imported from a public x402 index (not an operator endorsement). An operator can claim and correct an imported listing through the owner-update flow at /services/{slug}/update.'
-          example: submitted
-        status:
-          type: string
-          enum:
-          - online
-          - degraded
-          - offline
-          - unknown
-        verified:
-          type: boolean
-          description: 'FORTE tier (treno D3): a paid delivery-probe settled on-chain and delivered AND the badge was not since revoked on payTo/schema drift. No time decay. SEMANTIC CHANGE: this field previously carried the broad "answers a valid 402 and is alive" signal, which is now payment_ready.'
-        payment_ready:
-          type: boolean
-          description: 'BASE tier (treno D3): the endpoint answered a valid x402 402 challenge and is alive within the decay window (a probe success within the last 7 days, or api-key exempt). The broad discovery signal the verified field used to carry.'
-        endpoint_count:
-          type: integer
-          description: Number of active endpoints
-        min_price_usd:
+          description: Network ID as reported by the service (usually CAIP-2, casing may vary); kept raw for backwards compatibility. Prefer network_caip2 for joins.
+          example: eip155:8453
+        network_caip2:
           type:
-          - number
+          - string
           - 'null'
-          description: Lowest price in USD across all endpoints
-        networks:
-          type: array
-          items:
-            type: string
-          description: Network abbreviations supported by this service (e.g. ["BSE", "SOL"])
-        networks_caip2:
-          type: array
-          items:
-            type: string
-          description: Canonical CAIP-2 identifiers for cross-endpoint joins, index-aligned with networks (e.g. ["eip155:8453", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"]). Falls back to the stored network id for networks not yet in the canonical map, mirroring /networks .caip2, so service-to-network joins never silently break
-        uptime_24h:
+          description: Canonical CAIP-2 identifier for cross-endpoint joins (matches /networks .caip2 and facilitator chains .network_caip2); null when the raw network id is not recognized
+          example: eip155:8453
+        asset_address:
           type:
-          - number
+          - string
           - 'null'
-          description: Uptime percentage over last 24 hours; null = not yet monitored (no checks recorded in the window)
-        avg_response_time_ms:
+          description: Token contract/mint address as reported by the service (casing may vary); null = unknown/not reported
+        asset_address_norm:
+          type:
+          - string
+          - 'null'
+          description: 'Normalized token address for cross-endpoint joins: EVM addresses lowercased, non-EVM (e.g. Solana mints) kept as-is; null = unknown/not reported'
+        asset_name:
+          type: string
+          example: USDC
+        price:
+          type: string
+          description: Price in native asset units
+        price_usd:
+          type:
+          - string
+          - 'null'
+          description: Price in USD; null when the asset is not USD-priceable (a non-canonical token we do not value in USD)
+        pay_to:
+          type: string
+          description: Payment recipient address
+        max_timeout_seconds:
           type:
           - integer
           - 'null'
-        last_checked_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
-        assessment:
-          description: Compact per-service assessment summary (evidence-backed). null until the service is first assessed. Measured sub-scores are plain values; capability_tags and summary are AI-derived and carry {value,confidence,source:"ai"} provenance so an AI guess is never mistaken for a measured fact.
-          oneOf:
-          - $ref: '#/components/schemas/AssessmentSummary'
-          - type: 'null'
-    AiMarkedField:
-      type: object
-      description: An AI-derived (assessment family 10) field with its own provenance. value may be "unknown" when the model could not ground it in the measured signals. Never overrides a measured value.
-      properties:
-        value:
-          description: The AI-derived value (string or array of strings), or "unknown"
-        confidence:
-          type: number
-          minimum: 0
-          maximum: 1
-          description: Model confidence 0-1
-        source:
-          type: string
-          enum:
-          - ai
     ServiceDetail:
       type: object
       description: Full service detail including endpoints with pricing
@@ -1323,74 +849,244 @@ components:
           oneOf:
           - $ref: '#/components/schemas/Assessment'
           - type: 'null'
-    PricingEntry:
+    CheckEntry:
       type: object
-      description: Current pricing for an endpoint on a specific network
+      description: A single monitoring check result
       properties:
-        scheme:
+        id:
           type: string
-          example: exact
-        network:
+          format: uuid
+        checked_at:
           type: string
-          description: Network ID as reported by the service (usually CAIP-2, casing may vary); kept raw for backwards compatibility. Prefer network_caip2 for joins.
-          example: eip155:8453
-        network_caip2:
-          type:
-          - string
-          - 'null'
-          description: Canonical CAIP-2 identifier for cross-endpoint joins (matches /networks .caip2 and facilitator chains .network_caip2); null when the raw network id is not recognized
-          example: eip155:8453
-        asset_address:
-          type:
-          - string
-          - 'null'
-          description: Token contract/mint address as reported by the service (casing may vary); null = unknown/not reported
-        asset_address_norm:
-          type:
-          - string
-          - 'null'
-          description: 'Normalized token address for cross-endpoint joins: EVM addresses lowercased, non-EVM (e.g. Solana mints) kept as-is; null = unknown/not reported'
-        asset_name:
-          type: string
-          example: USDC
-        price:
-          type: string
-          description: Price in native asset units
-        price_usd:
-          type:
-          - string
-          - 'null'
-          description: Price in USD; null when the asset is not USD-priceable (a non-canonical token we do not value in USD)
-        pay_to:
-          type: string
-          description: Payment recipient address
-        max_timeout_seconds:
+          format: date-time
+        response_time_ms:
           type:
           - integer
           - 'null'
-    PricePoint:
-      type: object
-      description: One captured 402 price observation for a service, at one endpoint/network/asset
-      properties:
-        recorded_at:
-          type: string
-          format: date-time
-          description: UTC timestamp (ISO 8601, Z-format)
-        price_usd:
+        status_code:
           type:
-          - number
+          - integer
           - 'null'
-          description: Decimal USD at that observation
-        endpoint_id:
-          type: string
-        network:
-          type: string
-          description: Network id the price was recorded on
-        asset_address:
+        is_up:
+          type: boolean
+        error_message:
           type:
           - string
           - 'null'
-          description: Token address; null = unknown/not reported
+        endpoints_found:
+          type: integer
+    ServiceListItem:
+      type: object
+      description: A service in the directory listing with computed summary fields
+      properties:
+        slug:
+          type: string
+          description: URL-friendly identifier
+          example: weather-x402
+        name:
+          type: string
+          example: Weather x402
+        description:
+          type: string
+        base_url:
+          type: string
+          format: uri
+        website_url:
+          type:
+          - string
+          - 'null'
+          format: uri
+        category:
+          type: string
+          example: Data
+        source:
+          type: string
+          enum:
+          - submitted
+          - imported:bazaar
+          - imported:x402scan
+          description: 'Provenance (D4): how this listing entered the directory. "submitted" = an operator or user submitted it through /submit; "imported:<origin>" = auto-imported from a public x402 index (not an operator endorsement). An operator can claim and correct an imported listing through the owner-update flow at /services/{slug}/update.'
+          example: submitted
+        status:
+          type: string
+          enum:
+          - online
+          - degraded
+          - offline
+          - unknown
+        verified:
+          type: boolean
+          description: 'FORTE tier (treno D3): a paid delivery-probe settled on-chain and delivered AND the badge was not since revoked on payTo/schema drift. No time decay. SEMANTIC CHANGE: this field previously carried the broad "answers a valid 402 and is alive" signal, which is now payment_ready.'
+        payment_ready:
+          type: boolean
+          description: 'BASE tier (treno D3): the endpoint answered a valid x402 402 challenge and is alive within the decay window (a probe success within the last 7 days, or api-key exempt). The broad discovery signal the verified field used to carry.'
+        endpoint_count:
+          type: integer
+          description: Number of active endpoints
+        min_price_usd:
+          type:
+          - number
+          - 'null'
+          description: Lowest price in USD across all endpoints
+        networks:
+          type: array
+          items:
+            type: string
+          description: Network abbreviations supported by this service (e.g. ["BSE", "SOL"])
+        networks_caip2:
+          type: array
+          items:
+            type: string
+          description: Canonical CAIP-2 identifiers for cross-endpoint joins, index-aligned with networks (e.g. ["eip155:8453", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"]). Falls back to the stored network id for networks not yet in the canonical map, mirroring /networks .caip2, so service-to-network joins never silently break
+        uptime_24h:
+          type:
+          - number
+          - 'null'
+          description: Uptime percentage over last 24 hours; null = not yet monitored (no checks recorded in the window)
+        avg_response_time_ms:
+          type:
+          - integer
+          - 'null'
+        last_checked_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        assessment:
+          description: Compact per-service assessment summary (evidence-backed). null until the service is first assessed. Measured sub-scores are plain values; capability_tags and summary are AI-derived and carry {value,confidence,source:"ai"} provenance so an AI guess is never mistaken for a measured fact.
+          oneOf:
+          - $ref: '#/components/schemas/AssessmentSummary'
+          - type: 'null'
+    BuyersPoint:
+      type: object
+      description: One UTC-day bucket of the distinct on-chain buyers a service settled with (counted from the raw settlements, not summed from a rollup)
+      properties:
+        date:
+          type: string
+          description: UTC day (YYYY-MM-DD)
+          example: '2026-07-06'
+        unique_buyers:
+          type: integer
+          description: Distinct buyer addresses observed settling that day
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of results
+        page:
+          type: integer
+          description: Current page number
+        per_page:
+          type: integer
+          description: Results per page
+        total_pages:
+          type: integer
+          description: Total number of pages
+    Endpoint:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        method:
+          type: string
+          example: GET
+        path:
+          type: string
+          example: /v1/forecast
+        description:
+          type:
+          - string
+          - 'null'
+        mime_type:
+          type:
+          - string
+          - 'null'
+        is_active:
+          type: boolean
+        first_seen_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+        min_price_usd:
+          type:
+          - number
+          - 'null'
+        networks:
+          type: array
+          items:
+            type: string
+          description: Network abbreviations for this endpoint
+        pricing:
+          type: array
+          items:
+            $ref: '#/components/schemas/PricingEntry'
+    UptimeDataPoint:
+      type: object
+      description: Daily uptime snapshot for a service
+      properties:
+        period_start:
+          type: string
+          format: date-time
+        period_end:
+          type: string
+          format: date-time
+        uptime_percentage:
+          type: number
+          example: 99.5
+        avg_response_time_ms:
+          type: number
+        total_checks:
+          type: integer
+        successful_checks:
+          type: integer
+    AiMarkedField:
+      type: object
+      description: An AI-derived (assessment family 10) field with its own provenance. value may be "unknown" when the model could not ground it in the measured signals. Never overrides a measured value.
+      properties:
+        value:
+          description: The AI-derived value (string or array of strings), or "unknown"
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Model confidence 0-1
+        source:
+          type: string
+          enum:
+          - ai
+    Provenance:
+      type: object
+      description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
+      properties:
+        license:
+          type: string
+          enum:
+          - CC-BY-4.0
+          description: SPDX identifier of the data license (Creative Commons Attribution 4.0 International).
+        attribution_required:
+          type: boolean
+          description: Whether attribution is required when reusing this data (always true under CC BY 4.0).
+        attribution:
+          type: string
+          description: Ready-to-use attribution string to display when reusing this data.
+          example: 'Data: x402-list.com (CC BY 4.0)'
+        cite_as:
+          type: string
+          format: uri
+          description: 'Canonical URL to cite as the source of this specific resource: the human-readable page where one exists, otherwise the request URL without its query string.'
+          example: https://x402-list.com/services/acme-generate
+        source:
+          type: string
+          format: uri
+          description: Canonical site origin behind the directory.
+          example: https://x402-list.com
     PaymentRequired:
       type: object
       description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
@@ -1425,6 +1121,300 @@ components:
         message:
           type: string
           description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+    AssessmentSummary:
+      type: object
+      description: Compact per-service assessment summary carried on each list item (backs relevance/quality ranking). Measured sub-scores are plain; capability_tags/summary are AI-derived and marked.
+      properties:
+        compliance_grade:
+          type:
+          - string
+          - 'null'
+          enum:
+          - A
+          - B
+          - C
+          - D
+          - F
+          - unknown
+          - null
+          description: 'x402 conformance grade over the deterministic checklist (the share of evaluable checks the service passes). One ceiling applies: a service with at least one EVM route missing the EIP-712 domain parameters a standard x402 client needs in order to sign (check eip712_domain_extra = false) does not grade above C, however clean the rest of the envelope is. "unknown" means nothing has been observed yet, which is not a failure.'
+        compliance_passed:
+          type:
+          - integer
+          - 'null'
+          description: How many of the evaluable checks passed
+        compliance_total:
+          type:
+          - integer
+          - 'null'
+          description: 'How many checks could be evaluated at all: the denominator of the grade, up to 14. It is lower when a check does not apply (a Solana-only service has no EVM entry for the EIP-712 domain check) or could not be observed; a not-evaluable check is never counted as a failure'
+        compliance_failed_checks:
+          type:
+          - array
+          - 'null'
+          items:
+            type: string
+          description: Machine-stable ids of the conformance checks that failed (pass=false); [] = all pass, null = no compliance graded. Human labels are in the detail assessment.compliance.checks[]. The three signability ids are eip712_domain_extra (at least one EVM route carries no EIP-712 domain parameters, so a standard x402 client cannot sign a payment for it), x402_version_current (a captured payload declares an x402 version other than the current 2) and version_channel_coherent (an envelope declaring x402 version 2 was delivered only in the response body, not in the payment-required header). Only eip712_domain_extra caps the grade; the other two are facts about the envelope that do not stop a payment from being signed
+        reliability_uptime_30d:
+          type:
+          - number
+          - 'null'
+          description: Measured 30d uptime percentage; null = not yet measured
+        response_p95_ms:
+          type:
+          - integer
+          - 'null'
+        price_usd:
+          type:
+          - number
+          - 'null'
+          description: Decimal USD (entry / min price)
+        category_percentile:
+          type:
+          - number
+          - 'null'
+          description: 0-100 within its category, ranked on the min price (lower = cheaper)
+        price_stability:
+          type:
+          - number
+          - 'null'
+          description: 0-1, 1 = price never moved
+        price_max_usd:
+          type:
+          - number
+          - 'null'
+          description: Decimal USD (highest tier); equals price_usd when flat. null on rows assessed before this field existed
+        category_percentile_max:
+          type:
+          - number
+          - 'null'
+          description: 0-100, ranked on the max price among every service max price in the category
+        endpoint_count:
+          type:
+          - integer
+          - 'null'
+          description: Count of active priced endpoints
+        distinct_price_count:
+          type:
+          - integer
+          - 'null'
+          description: Count of distinct current prices (1 = flat, >1 = tiered)
+        risk_level:
+          type:
+          - string
+          - 'null'
+          enum:
+          - clean
+          - warning
+          - danger
+          - null
+          description: Deterministic risk banner level
+        capability_tags:
+          description: AI-derived capability tags, marked {value,confidence,source:"ai"}; null when the model could not ground them
+          oneOf:
+          - $ref: '#/components/schemas/AiMarkedField'
+          - type: 'null'
+        summary:
+          description: AI-derived one-line summary, marked {value,confidence,source:"ai"}; null when unknown
+          oneOf:
+          - $ref: '#/components/schemas/AiMarkedField'
+          - type: 'null'
+        traction:
+          description: Family 6 measured on-chain traction (same block as the detail); null on rows assessed before this field existed
+          oneOf:
+          - $ref: '#/components/schemas/Traction'
+          - type: 'null'
+        updated_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    Traction:
+      type: object
+      description: 'Family 6: measured on-chain traction snapshot for a service, derived deterministically from settler-attributed USDC settlements over the service payTo mapping. null != 0: status "measured" reports real numbers (0 is an honest "never settled on-chain via a facilitator"); "no-payto" (no known payTo) and "unmeasured-network" (payTo only on a network we do not measure) null every metric rather than fake a zero; "unresponsive" suppresses the numbers of a shared-payout member whose probe has been failing for 7 days (settlements on the shared address are not attributed to it while it is down). A conservative undercount. shared_payout marks a payTo shared across services: volume_usd_30d is then attributed PRO-QUOTA (the operator-level figure divided by the current members sharing the payout), a declared convention rather than an individually observed measure, while tx_count_30d and unique_buyers_30d stay WHOLE operator-level integers, never divided or fractional; the ratios top_buyer_share_30d and trend_7d_vs_30d are left whole.'
+      properties:
+        status:
+          type: string
+          enum:
+          - measured
+          - no-payto
+          - unmeasured-network
+          - unresponsive
+          description: Whether the metrics are measured, and if not, why they are null
+        volume_usd_30d:
+          type:
+          - number
+          - 'null'
+          description: Settlement volume in USD over the trailing 30 UTC days; null unless status is measured. On a shared payout it is attributed pro-quota (the address total divided by the services sharing it), so the block sums correctly across services; the daily /volume series stays address-level, do not sum THAT across shared-payout services.
+        tx_count_30d:
+          type:
+          - number
+          - 'null'
+          description: Settlement count over the trailing 30 UTC days; null unless measured. On a shared payout it stays a WHOLE operator-level integer, never divided (apply pro_quota_share for the nominal per-service slice), so never sum it across services that share a payout.
+        unique_buyers_30d:
+          type:
+          - number
+          - 'null'
+          description: Distinct buyer addresses over the trailing 30 UTC days; null unless measured. On a shared payout it stays a WHOLE operator-level integer, never divided or fractional (apply pro_quota_share for the nominal slice), so never sum it across services that share a payout.
+        last_settlement_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Most recent observed settlement across all history; null unless measured
+        top_buyer_share_30d:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+          description: 0-1 share of the single largest buyer over 30d (concentration); null when 30d volume is 0 or not measured
+        trend_7d_vs_30d:
+          type:
+          - number
+          - 'null'
+          description: Ratio of the last-7d daily rate to the 30d daily rate; null when 30d volume is 0 or not measured
+        shared_payout:
+          type: boolean
+          description: A current payTo of this service is also a current payTo of another service; when true only volume_usd_30d is attributed pro-quota, while the counting metrics stay whole operator-level integers
+        shared_with:
+          type: integer
+          minimum: 0
+          description: Count of OTHER services sharing a current payTo (0 when not shared); the pro-quota divisor is shared_with + 1
+        pro_quota_share:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+          description: 'Cluster fraction 1/(shared_with + 1): the pro-quota slice to apply to the whole-integer counts (tx_count_30d, unique_buyers_30d, tx_count_all_time) for this service nominal portion of a shared payout. 1 on a dedicated (unshared) payout; null unless status is measured.'
+        measured_networks:
+          type: array
+          items:
+            type: string
+          description: Canonical CAIP-2 networks that contributed a measurement
+        first_settlement_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: 'TRENO A additive: first observed on-chain settlement over the payTo mapping; null unless measured (never recorded yet). null on a snapshot stored before this field existed.'
+        volume_usd_all_time:
+          type:
+          - number
+          - 'null'
+          description: 'TRENO A additive: settlement volume in USD over all recorded history since listing. Attributed PRO-QUOTA on a shared payout, exactly like volume_usd_30d (all-time over a shared address is still the operator figure divided by the sharing services). null unless measured, or on a pre-extension snapshot.'
+        tx_count_all_time:
+          type:
+          - number
+          - 'null'
+          description: 'TRENO A additive: settlement count over all recorded history. On a shared payout it stays a WHOLE operator-level integer, never divided or fractional, like tx_count_30d (apply pro_quota_share for the nominal slice; only volume_usd_all_time is pro-quota). null unless measured, or on a pre-extension snapshot.'
+        median_settlement_usd_30d:
+          type:
+          - number
+          - 'null'
+          description: 'TRENO A additive: median single-settlement amount (USD) over the trailing 30 days. An invariant per-settlement amount, NEVER divided pro-quota. null unless measured, or on a pre-extension snapshot.'
+        max_settlement_usd_30d:
+          type:
+          - number
+          - 'null'
+          description: 'TRENO A additive: largest single-settlement amount (USD) over the trailing 30 days. An invariant per-settlement amount, NEVER divided pro-quota. null unless measured, or on a pre-extension snapshot.'
+        settled_via:
+          type: array
+          items:
+            type: string
+          description: 'TRENO A additive (D1): facilitator ids that settled this service on-chain over the trailing 30 days, ordered by volume. [] when not measured or on a pre-extension snapshot. An invariant fact, never divided.'
+        settled_via_detail:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              volume_usd_30d:
+                type: number
+              tx_count_30d:
+                type: integer
+          description: 'A-26#2 additive: settled_via WITH the per-facilitator 30d volume/tx weights, same order as settled_via. [] when not measured or on a pre-extension snapshot. Invariant facts, never divided.'
+        shared_with_services:
+          type: array
+          items:
+            type: object
+            properties:
+              slug:
+                type: string
+              name:
+                type: string
+          description: 'TRENO A additive (E4): the other listed services currently sharing this payout address (slug + name), for the pro-quota disclosure. [] when the payout is not shared or on a pre-extension snapshot. An invariant fact, never divided.'
+        caveat:
+          type: string
+          description: 'Fixed in-band note: the conservative undercount, plus the pro-quota convention when the payout is shared'
+        all_time_caveat:
+          type: string
+          description: 'A-25#2 additive: fixed in-band note that first_settlement_at / volume_usd_all_time / tx_count_all_time are floored at the start of our harvest window (the fixed backfill floor, differing per chain), not the service full history.'
+    Assessment:
+      type: object
+      description: Full evidence-backed per-service assessment. Measured families are read-only plain values; the synthesis block is AI-derived and marked. "unknown"/null are honest, not zero.
+      properties:
+        updated_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        input_hash:
+          type:
+          - string
+          - 'null'
+          description: Hash of the normalized inputs the assessment was computed over
+        model_id:
+          type:
+          - string
+          - 'null'
+          description: LLM model id used for the synthesis block (null when no synthesis ran)
+        prompt_version:
+          type:
+          - string
+          - 'null'
+        reliability:
+          type:
+          - object
+          - 'null'
+          description: 'Family 1: uptime windows, p95/avg response, freshness, failures, total checks (measured)'
+        compliance:
+          type:
+          - object
+          - 'null'
+          description: 'Family 2: x402 conformance grade + per-check ok/x list (14 checks, of which three cover signability: the declared x402 version, the EIP-712 domain parameters on every EVM entry, and whether a v2 envelope travelled in the payment-required header), payTo source/location (deterministic). Each check is true, false, or null when it could not be evaluated, and a null never counts as a failure'
+        site:
+          type:
+          - object
+          - 'null'
+          description: 'Family 3: homepage/openapi/pricing/llms.txt/robots/terms reachability (measured)'
+        domain:
+          type:
+          - object
+          - 'null'
+          description: 'Family 4: domain age, registrar, free-host flag (measured)'
+        economics:
+          type:
+          - object
+          - 'null'
+          description: 'Family 5 (measured): entry price (min USD + atomic) and its in-category percentile, plus the full price picture for tiered services: price_max_usd (highest tier), category_percentile_max, endpoint_count, distinct_price_count, pricing model and stability'
+        risk:
+          type:
+          - object
+          - 'null'
+          description: 'Family 8: deterministic risk level + flags (blocklist/impersonation only; never AI, never from low uptime or high price)'
+        synthesis:
+          type:
+          - object
+          - 'null'
+          description: 'Family 10: AI-derived summary/capability_tags/category/inputs/outputs/auth, each an AiMarkedField {value,confidence,source:"ai"}; never overrides a measured value'
+        traction:
+          description: 'Family 6: measured on-chain settlement traction (volume/buyers/concentration over the payTo mapping, USDC, a conservative undercount); null on rows assessed before this field existed'
+          oneOf:
+          - $ref: '#/components/schemas/Traction'
+          - type: 'null'
     PaymentRequirements:
       type: object
       description: A single x402 payment option (one element of accepts[]).
@@ -1461,6 +1451,16 @@ components:
             version:
               type: string
               example: '2'
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
   headers:
     MeterRemaining:
       schema:
@@ -1471,6 +1471,16 @@ components:
         type: integer
       description: 'Unix timestamp (seconds) at which this IP''s free daily metered-GET quota resets: the next 00:00 UTC. Same shape as X-RateLimit-Reset. Lets a caller behind a shared egress IP tell when the per-IP quota rolls over.'
   responses:
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
     InternalError:
       description: Internal server error
       content:
@@ -1481,16 +1491,6 @@ components:
             error:
               code: 500
               message: Internal server error
-    NotFound:
-      description: Resource not found
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 404
-              message: Service not found
     MeteredPaymentRequired:
       description: 'Metered: this IP is beyond the free daily quota (2,000 GET requests/day per IP on /api/v1/*). Each further request costs $0.01 USDC (x402) on Base. Pay accepts[0] with an x402-capable client and retry the same request with a PAYMENT-SIGNATURE header; the successful response then carries a PAYMENT-RESPONSE header. The PAYMENT-REQUIRED response header carries the same x402 PaymentRequired object base64-encoded, without the app-level message field (body only).'
       headers:
@@ -1502,13 +1502,13 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/PaymentRequired'
-    RateLimited:
-      description: Rate limit exceeded
+    NotFound:
+      description: Resource not found
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
           example:
             error:
-              code: 429
-              message: Too many requests. Please slow down.
+              code: 404
+              message: Service not found

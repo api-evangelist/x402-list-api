@@ -129,40 +129,30 @@ components:
               code: 429
               message: Too many requests. Please slow down.
   schemas:
-    PaymentRequired:
+    SuggestionRequest:
       type: object
-      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
+      description: Paid suggestion body (F11). Only "text" is required; the request must be paid ($0.10 USDC on Base via the x402 handshake). Suggestions are internal and manually reviewed, never published.
+      required:
+      - text
       properties:
-        x402Version:
-          type: integer
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: The suggestion (1 to 2000 characters)
+        category:
+          type: string
           enum:
-          - 2
-        accepts:
-          type: array
-          items:
-            $ref: '#/components/schemas/PaymentRequirements'
-        resource:
-          type: object
-          description: The paid resource this 402 guards (echoed by the x402 server).
-          properties:
-            url:
-              type: string
-              example: https://x402-list.com/api/v1/submit
-            description:
-              type: string
-              example: Resubmission fee after a rejected submission
-            mimeType:
-              type: string
-              example: application/json
-            serviceName:
-              type: string
-              example: x402 List
-        error:
+          - feature
+          - bug
+          - data
+          - other
+          default: other
+          description: Suggestion category (defaults to "other" when omitted)
+        email:
           type: string
-          description: App-level error code, e.g. resubmission_fee_required
-        message:
-          type: string
-          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+          format: email
+          description: 'Optional contact email: receives the review outcome'
     Provenance:
       type: object
       description: Data provenance and license block. Present once per response, top-level in the envelope alongside data (and meta where present), never per item. Declares the CC BY 4.0 data license and how to attribute this data.
@@ -225,30 +215,40 @@ components:
             version:
               type: string
               example: '2'
-    SuggestionRequest:
+    PaymentRequired:
       type: object
-      description: Paid suggestion body (F11). Only "text" is required; the request must be paid ($0.10 USDC on Base via the x402 handshake). Suggestions are internal and manually reviewed, never published.
-      required:
-      - text
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
       properties:
-        text:
-          type: string
-          minLength: 1
-          maxLength: 2000
-          description: The suggestion (1 to 2000 characters)
-        category:
-          type: string
+        x402Version:
+          type: integer
           enum:
-          - feature
-          - bug
-          - data
-          - other
-          default: other
-          description: Suggestion category (defaults to "other" when omitted)
-        email:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
+          type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
+          properties:
+            url:
+              type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
           type: string
-          format: email
-          description: 'Optional contact email: receives the review outcome'
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
     Error:
       type: object
       properties:

@@ -397,72 +397,51 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 components:
-  responses:
-    InternalError:
-      description: Internal server error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 500
-              message: Internal server error
-    RateLimited:
-      description: Rate limit exceeded
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 429
-              message: Too many requests. Please slow down.
-    NotFound:
-      description: Resource not found
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error:
-              code: 404
-              message: Service not found
   schemas:
-    PaymentRequired:
+    ServiceSubmissionRequest:
       type: object
-      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
+      description: 'Service submission body: the default branch of POST /submit when "type" is omitted'
+      required:
+      - url
+      - email
+      - service_name
+      - description
+      - website_url
+      - category
+      - endpoints
       properties:
-        x402Version:
-          type: integer
-          enum:
-          - 2
-        accepts:
+        type:
+          type: string
+          description: Optional submission type discriminator. Omit for services; any value other than "facilitator" is treated as a service submission.
+        url:
+          type: string
+          format: uri
+          description: Base URL of the x402 service. On a free compute host (vercel.app, workers.dev and similar) the endpoint answers HTTP 402 and the submission costs a one-off, non-refundable $1 USDC on Base; on static-only hosting or a dev tunnel it is rejected with HTTP 400 at any price
+        email:
+          type: string
+          format: email
+          description: Submitter contact email
+        service_name:
+          type: string
+          description: Human-readable name of the service
+        description:
+          type: string
+          description: Brief description of what the service does
+        website_url:
+          type: string
+          format: uri
+          description: Public website URL
+        category:
+          type: string
+          description: Service category (use /categories to get valid values)
+        endpoints:
           type: array
           items:
-            $ref: '#/components/schemas/PaymentRequirements'
-        resource:
-          type: object
-          description: The paid resource this 402 guards (echoed by the x402 server).
-          properties:
-            url:
-              type: string
-              example: https://x402-list.com/api/v1/submit
-            description:
-              type: string
-              example: Resubmission fee after a rejected submission
-            mimeType:
-              type: string
-              example: application/json
-            serviceName:
-              type: string
-              example: x402 List
-        error:
+            type: string
+          description: List of endpoint paths to probe (e.g. ["/v1/generate", "/v1/translate"])
+        notes:
           type: string
-          description: App-level error code, e.g. resubmission_fee_required
-        message:
-          type: string
-          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
+          description: Optional additional context
     FacilitatorSubmissionRequest:
       type: object
       description: 'Facilitator submission body, selected by "type": "facilitator". Facilitators are settlement infrastructure: they are verified by on-chain settlement activity from their settler addresses, never by an HTTP 402 probe. Approved facilitators are listed on GET /facilitators with verification "listed" and switch to "on-chain" automatically once settlement volume is measured.'
@@ -589,16 +568,40 @@ components:
             version:
               type: string
               example: '2'
-    Error:
+    PaymentRequired:
       type: object
+      description: x402 v2 PaymentRequired body returned on a 402 (also base64-encoded in the PAYMENT-REQUIRED response header).
       properties:
-        error:
+        x402Version:
+          type: integer
+          enum:
+          - 2
+        accepts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRequirements'
+        resource:
           type: object
+          description: The paid resource this 402 guards (echoed by the x402 server).
           properties:
-            code:
-              type: integer
-            message:
+            url:
               type: string
+              example: https://x402-list.com/api/v1/submit
+            description:
+              type: string
+              example: Resubmission fee after a rejected submission
+            mimeType:
+              type: string
+              example: application/json
+            serviceName:
+              type: string
+              example: x402 List
+        error:
+          type: string
+          description: App-level error code, e.g. resubmission_fee_required
+        message:
+          type: string
+          description: Human-readable explanation with a pointer to /api (body only; absent from the PAYMENT-REQUIRED header)
     ServiceUpdateRequest:
       type: object
       description: 'Owner update request body (F10). Send ALL fields prefilled with the live listing values: the server computes the diff and records only what actually changed. Empty or omitted fields are always treated as UNCHANGED (nothing can be cleared through this channel). Only declarative metadata is updatable; measured fields (verified, uptime, pricing, status, payTo) are read-only for everyone.'
@@ -640,47 +643,44 @@ components:
           - /v1/summarize
           - POST /v1/chat/completions
           description: NEW x402-protected endpoints to add, one per entry, as "/v1/resource" or "POST /v1/resource". GET and POST are the accepted methods (case-insensitive) and an entry with no method prefix is taken as GET. Method and path together identify an endpoint, so "POST /x" is a new addition even when "GET /x" is already listed; an entry already listed with the same method is silently ignored. Endpoints cannot be removed from here. The endpoint is probed for HTTP 402 with the declared method after ownership verification. Also accepted as one newline-separated string.
-    ServiceSubmissionRequest:
+    Error:
       type: object
-      description: 'Service submission body: the default branch of POST /submit when "type" is omitted'
-      required:
-      - url
-      - email
-      - service_name
-      - description
-      - website_url
-      - category
-      - endpoints
       properties:
-        type:
-          type: string
-          description: Optional submission type discriminator. Omit for services; any value other than "facilitator" is treated as a service submission.
-        url:
-          type: string
-          format: uri
-          description: Base URL of the x402 service. On a free compute host (vercel.app, workers.dev and similar) the endpoint answers HTTP 402 and the submission costs a one-off, non-refundable $1 USDC on Base; on static-only hosting or a dev tunnel it is rejected with HTTP 400 at any price
-        email:
-          type: string
-          format: email
-          description: Submitter contact email
-        service_name:
-          type: string
-          description: Human-readable name of the service
-        description:
-          type: string
-          description: Brief description of what the service does
-        website_url:
-          type: string
-          format: uri
-          description: Public website URL
-        category:
-          type: string
-          description: Service category (use /categories to get valid values)
-        endpoints:
-          type: array
-          items:
-            type: string
-          description: List of endpoint paths to probe (e.g. ["/v1/generate", "/v1/translate"])
-        notes:
-          type: string
-          description: Optional additional context
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+  responses:
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: Internal server error
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 404
+              message: Service not found
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 429
+              message: Too many requests. Please slow down.
